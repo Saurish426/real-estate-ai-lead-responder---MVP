@@ -2,9 +2,6 @@ const fs = require("fs");
 const path = require("path");
 const express = require("express");
 
-const testRoutes = require("./routes/test");
-const leadsRoutes = require("./routes/leads");
-
 // Load simple KEY=value pairs from a local .env file when one exists.
 // This keeps the MVP easy to run without adding extra config packages yet.
 function loadEnvFile() {
@@ -30,7 +27,15 @@ function loadEnvFile() {
     }
 
     const key = trimmedLine.slice(0, equalsIndex).trim();
-    const value = trimmedLine.slice(equalsIndex + 1).trim();
+    let value = trimmedLine.slice(equalsIndex + 1).trim();
+
+    // Support common .env style values like DATABASE_URL="postgresql://..."
+    if (
+      (value.startsWith("\"") && value.endsWith("\"")) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
 
     if (key && !process.env[key]) {
       process.env[key] = value;
@@ -39,6 +44,9 @@ function loadEnvFile() {
 }
 
 loadEnvFile();
+
+const testRoutes = require("./routes/test");
+const leadsRoutes = require("./routes/leads");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
