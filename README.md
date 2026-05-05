@@ -71,7 +71,24 @@ The lead form saves each lead to the database, then sends a simple Gmail reply e
 EMAIL_USER="your-gmail-address@gmail.com"
 EMAIL_APP_PASSWORD="your-gmail-app-password"
 EMAIL_FROM="your-gmail-address@gmail.com"
+GMAIL_LEAD_CAPTURE_ENABLED=false
 ```
+
+## Manual Gmail Lead Capture Test
+
+Gmail capture does not run on server startup. To test one email manually, send yourself an unread email with this exact subject:
+
+```text
+TEST REAL ESTATE LEAD
+```
+
+Then run:
+
+```bash
+npm run capture:gmail-test
+```
+
+The script reads only the newest unread email with that exact subject, creates one lead with `source = email`, marks that email as read, and exits.
 
 ## Test Routes
 
