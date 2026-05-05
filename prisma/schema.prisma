@@ -1,0 +1,41 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// A user can represent an owner, admin, or future team member in the app.
+model User {
+  id    Int    @id @default(autoincrement())
+  name  String
+  email String @unique
+}
+
+// A lead is a potential real estate client who contacts the business.
+model Lead {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String
+  phone     String
+  message   String
+  source    String
+  createdAt DateTime @default(now())
+}
+
+// A conversation stores the latest message and status for a lead follow-up.
+model Conversation {
+  id          Int    @id @default(autoincrement())
+  leadId      Int
+  lastMessage String
+  status      String
+}
+
+// A booking stores an appointment time and status for a lead.
+model Booking {
+  id     Int      @id @default(autoincrement())
+  leadId Int
+  time   DateTime
+  status String
+}

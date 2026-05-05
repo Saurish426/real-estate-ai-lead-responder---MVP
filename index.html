@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Lead Responder</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      font-family: "Inter", Arial, sans-serif;
+      color: #172033;
+      background:
+        linear-gradient(135deg, rgba(239, 246, 255, 0.96), rgba(236, 253, 245, 0.92)),
+        linear-gradient(180deg, #f8fafc, #e0f2fe);
+    }
+
+    .page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 18px;
+    }
+
+    .lead-card {
+      width: 100%;
+      max-width: 460px;
+      padding: 34px;
+      background: #ffffff;
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      border-radius: 8px;
+      box-shadow: 0 24px 70px rgba(15, 23, 42, 0.16);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 0 18px;
+      padding: 7px 10px;
+      color: #1d4ed8;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    .eyebrow-dot {
+      width: 8px;
+      height: 8px;
+      background: #22c55e;
+      border-radius: 50%;
+    }
+
+    h1 {
+      margin: 0;
+      color: #0f172a;
+      font-size: 2.35rem;
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 12px 0 28px;
+      color: #526173;
+      font-size: 1rem;
+      line-height: 1.6;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 7px;
+      color: #334155;
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    input,
+    textarea {
+      width: 100%;
+      padding: 13px 14px;
+      color: #0f172a;
+      background: #f8fafc;
+      border: 1px solid #d7dee8;
+      border-radius: 8px;
+      font: inherit;
+      outline: none;
+      transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+    }
+
+    input:focus,
+    textarea:focus {
+      background: #ffffff;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.14);
+    }
+
+    textarea {
+      min-height: 116px;
+      resize: vertical;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 6px;
+      padding: 14px 16px;
+      color: #ffffff;
+      background: #2563eb;
+      border: 0;
+      border-radius: 8px;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 12px 24px rgba(37, 99, 235, 0.28);
+      transition: transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
+    }
+
+    button:hover {
+      background: #1d4ed8;
+      box-shadow: 0 16px 30px rgba(37, 99, 235, 0.34);
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.72;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .form-message {
+      display: none;
+      margin: 18px 0 0;
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 0.92rem;
+      font-weight: 700;
+      line-height: 1.45;
+    }
+
+    .form-message.success {
+      display: block;
+      color: #166534;
+      background: #dcfce7;
+      border: 1px solid #86efac;
+    }
+
+    .form-message.error {
+      display: block;
+      color: #991b1b;
+      background: #fee2e2;
+      border: 1px solid #fecaca;
+    }
+
+    @media (max-width: 520px) {
+      .lead-card {
+        padding: 26px;
+      }
+
+      h1 {
+        font-size: 2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="lead-card">
+      <p class="eyebrow"><span class="eyebrow-dot"></span> Real estate demo</p>
+      <h1>AI Lead Responder</h1>
+      <p class="subtitle">Instantly respond to real estate inquiries</p>
+
+      <form id="lead-form">
+        <div class="form-group">
+          <label for="name">Name</label>
+          <input id="name" name="name" type="text" placeholder="John Smith" required>
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input id="email" name="email" type="email" placeholder="john@example.com" required>
+        </div>
+
+        <div class="form-group">
+          <label for="phone">Phone</label>
+          <input id="phone" name="phone" type="tel" placeholder="1234567890" required>
+        </div>
+
+        <div class="form-group">
+          <label for="message">Message</label>
+          <textarea id="message" name="message" placeholder="Is this property still available?" required></textarea>
+        </div>
+
+        <button id="submit-button" type="submit">Send inquiry</button>
+      </form>
+
+      <p id="form-message" class="form-message" role="status" aria-live="polite"></p>
+    </section>
+  </main>
+
+  <script>
+    const form = document.getElementById("lead-form");
+    const formMessage = document.getElementById("form-message");
+    const submitButton = document.getElementById("submit-button");
+
+    function showMessage(type, message) {
+      formMessage.textContent = message;
+      formMessage.className = `form-message ${type}`;
+    }
+
+    function setLoading(isLoading) {
+      submitButton.disabled = isLoading;
+      submitButton.textContent = isLoading ? "Sending..." : "Send inquiry";
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      formMessage.className = "form-message";
+      formMessage.textContent = "";
+      setLoading(true);
+
+      const lead = {
+        name: form.name.value.trim(),
+        email: form.email.value.trim(),
+        phone: form.phone.value.trim(),
+        message: form.message.value.trim(),
+        source: "website"
+      };
+
+      try {
+        const response = await fetch("http://localhost:3000/api/leads", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(lead)
+        });
+
+        if (!response.ok) {
+          throw new Error("Request failed");
+        }
+
+        form.reset();
+        showMessage("success", "Thanks! We will get back to you shortly.");
+      } catch (error) {
+        showMessage("error", "Something went wrong. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "name": "real-estate-ai-lead-responder-mvp",
+  "version": "1.0.0",
+  "description": "Backend foundation for the Real Estate AI Lead Responder MVP.",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
+    "express": "^4.19.2",
+    "pg": "^8.20.0"
+  },
+  "devDependencies": {
+    "prisma": "^7.8.0"
+  }
+}
