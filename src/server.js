@@ -58,11 +58,9 @@ app.use(express.json());
 app.use("/api/test", testRoutes);
 app.use("/api/leads", leadsRoutes);
 
-// A small home route helps confirm the API is alive in a browser.
+// Show the simple website lead form at the home page.
 app.get("/", (req, res) => {
-  res.json({
-    message: "Real Estate AI Lead Responder API"
-  });
+  res.sendFile(path.join(process.cwd(), "index.html"));
 });
 
 app.listen(PORT, () => {

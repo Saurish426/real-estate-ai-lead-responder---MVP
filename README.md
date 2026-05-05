@@ -35,6 +35,34 @@ npm start
 
 The server uses `PORT` from `.env`. If no port is set, it runs on port `3000`.
 
+## Test Website Lead Form
+
+Start the server:
+
+```bash
+npm run dev
+```
+
+Open the lead form in your browser:
+
+```text
+http://localhost:3000
+```
+
+Fill out the name, email, phone, and message fields, then submit the form.
+
+Expected success message:
+
+```text
+Thanks! We will get back to you shortly.
+```
+
+The form sends the lead to:
+
+```text
+http://localhost:3000/api/leads
+```
+
 ## Test Routes
 
 Check that the API is running:
