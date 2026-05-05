@@ -1,4 +1,5 @@
 const { getPrismaClient } = require("../db");
+const { sendLeadReplyEmail } = require("../services/emailService");
 
 const REQUIRED_LEAD_FIELDS = ["name", "email", "phone", "message", "source"];
 
@@ -33,9 +34,30 @@ async function createLead(req, res) {
       data: lead
     });
 
-    return res.status(201).json(savedLead);
+    let emailSent = false;
+
+    try {
+      await sendLeadReplyEmail(savedLead);
+      emailSent = true;
+      console.log(`Lead reply email sent for lead ${savedLead.id}.`);
+    } catch (emailError) {
+      console.error("Lead was saved, but reply email failed:", {
+        leadId: savedLead.id,
+        message: emailError.message,
+        code: emailError.code
+      });
+    }
+
+    return res.status(201).json({
+      lead: savedLead,
+      emailSent
+    });
   } catch (error) {
-    console.error("Error creating lead:", error);
+    console.error("Error creating lead:", {
+      message: error.message,
+      code: error.code,
+      stack: error.stack
+    });
 
     return res.status(500).json({
       error: "Unable to create lead."

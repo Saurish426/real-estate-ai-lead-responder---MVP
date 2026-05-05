@@ -63,6 +63,16 @@ The form sends the lead to:
 http://localhost:3000/api/leads
 ```
 
+## Email Reply Settings
+
+The lead form saves each lead to the database, then sends a simple Gmail reply email. Add these values to your local `.env` file:
+
+```bash
+EMAIL_USER="your-gmail-address@gmail.com"
+EMAIL_APP_PASSWORD="your-gmail-app-password"
+EMAIL_FROM="your-gmail-address@gmail.com"
+```
+
 ## Test Routes
 
 Check that the API is running:
@@ -91,10 +101,13 @@ Expected response:
 
 ```json
 {
-  "name": "Alex Agent",
-  "email": "alex@example.com",
-  "phone": "555-123-4567",
-  "message": "I want to sell my home.",
-  "source": "website"
+  "lead": {
+    "name": "Alex Agent",
+    "email": "alex@example.com",
+    "phone": "555-123-4567",
+    "message": "I want to sell my home.",
+    "source": "website"
+  },
+  "emailSent": true
 }
 ```
