@@ -1,17 +1,13 @@
 const { getPrismaClient } = require("../db");
 const { sendLeadReplyEmail } = require("../services/emailService");
+const { normalizeLead } = require("../utils/normalizeLead");
 
 const REQUIRED_LEAD_FIELDS = ["name", "email", "phone", "message", "source"];
 
 async function createLead(req, res) {
-  const body = req.body || {};
-  const lead = {
-    name: body.name,
-    email: body.email,
-    phone: body.phone,
-    message: body.message,
-    source: body.source
-  };
+  const lead = normalizeLead(req.body, {
+    defaultSource: "website"
+  });
 
   // Collect every missing field so the user knows exactly what to fix.
   const missingFields = REQUIRED_LEAD_FIELDS.filter((field) => {

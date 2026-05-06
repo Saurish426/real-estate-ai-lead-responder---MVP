@@ -3,6 +3,7 @@ const path = require("path");
 const { ImapFlow } = require("imapflow");
 const { simpleParser } = require("mailparser");
 const { getPrismaClient } = require("../db");
+const { normalizeLead } = require("../utils/normalizeLead");
 
 const TEST_SUBJECT = "TEST REAL ESTATE LEAD";
 
@@ -165,13 +166,17 @@ async function captureOneTestLead() {
     const parsedEmail = await simpleParser(message.source);
     const body = parsedEmail.text || stripHtml(parsedEmail.html) || "No message body.";
     const senderEmail = getSenderEmail(parsedEmail, message.envelope);
-    const leadData = {
-      name: senderEmail,
-      email: senderEmail,
-      phone: "unknown",
-      message: body.trim(),
-      source: "email"
-    };
+    const leadData = normalizeLead(
+      {
+        name: senderEmail,
+        email: senderEmail,
+        message: body,
+        source: "email"
+      },
+      {
+        defaultSource: "email"
+      }
+    );
 
     prisma = getPrismaClient();
     const savedLead = await prisma.lead.create({
