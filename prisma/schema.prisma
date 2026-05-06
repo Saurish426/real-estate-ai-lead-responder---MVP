@@ -21,6 +21,7 @@ model Lead {
   phone     String
   message   String
   source    String
+  aiExtraction Json?
   createdAt DateTime @default(now())
 }
 

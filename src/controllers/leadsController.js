@@ -1,4 +1,5 @@
 const { getPrismaClient } = require("../db");
+const { extractLeadDetails } = require("../services/aiExtractionService");
 const { sendLeadReplyEmail } = require("../services/emailService");
 const { normalizeLead } = require("../utils/normalizeLead");
 
@@ -26,9 +27,34 @@ async function createLead(req, res) {
     const prisma = getPrismaClient();
 
     // Save the lead in the database and return the record Prisma created.
-    const savedLead = await prisma.lead.create({
+    let savedLead = await prisma.lead.create({
       data: lead
     });
+
+    let aiExtraction = null;
+
+    try {
+      aiExtraction = await extractLeadDetails(savedLead);
+
+      if (aiExtraction) {
+        savedLead = await prisma.lead.update({
+          where: {
+            id: savedLead.id
+          },
+          data: {
+            aiExtraction
+          }
+        });
+
+        console.log(`AI extraction saved for lead ${savedLead.id}.`);
+      }
+    } catch (aiError) {
+      console.error("Lead was saved, but AI extraction failed:", {
+        leadId: savedLead.id,
+        message: aiError.message,
+        code: aiError.code
+      });
+    }
 
     let emailSent = false;
 
@@ -46,6 +72,7 @@ async function createLead(req, res) {
 
     return res.status(201).json({
       lead: savedLead,
+      aiExtraction,
       emailSent
     });
   } catch (error) {
