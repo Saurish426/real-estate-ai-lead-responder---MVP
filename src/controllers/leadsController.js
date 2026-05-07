@@ -1,6 +1,11 @@
 const { getPrismaClient } = require("../db");
 const { extractLeadDetails } = require("../services/aiExtractionService");
 const { generateLeadResponse } = require("../services/aiResponseService");
+const {
+  findConversationForLead,
+  saveLeadForSubmission,
+  updateConversationMemory
+} = require("../services/conversationMemoryService");
 const { sendLeadReplyEmail } = require("../services/emailService");
 const { normalizeLead } = require("../utils/normalizeLead");
 
@@ -27,10 +32,19 @@ async function createLead(req, res) {
   try {
     const prisma = getPrismaClient();
 
-    // Save the lead in the database and return the record Prisma created.
-    let savedLead = await prisma.lead.create({
-      data: lead
-    });
+    // Save a new lead, or update the existing lead when the same email returns.
+    let { savedLead, isExistingLead } = await saveLeadForSubmission(prisma, lead);
+    let existingConversation = null;
+
+    try {
+      existingConversation = await findConversationForLead(prisma, savedLead.id);
+    } catch (memoryLookupError) {
+      console.error("Lead was saved, but conversation lookup failed:", {
+        leadId: savedLead.id,
+        message: memoryLookupError.message,
+        code: memoryLookupError.code
+      });
+    }
 
     let aiExtraction = null;
 
@@ -61,24 +75,30 @@ async function createLead(req, res) {
     let conversation = null;
 
     try {
-      aiResponse = await generateLeadResponse(savedLead, aiExtraction);
-
-      if (aiResponse) {
-        conversation = await prisma.conversation.create({
-          data: {
-            leadId: savedLead.id,
-            lastMessage: aiResponse,
-            status: "ai_generated"
-          }
-        });
-
-        console.log(`AI response saved for lead ${savedLead.id}.`);
-      }
+      aiResponse = await generateLeadResponse(savedLead, aiExtraction, existingConversation);
     } catch (responseError) {
       console.error("Lead was saved, but AI response generation failed:", {
         leadId: savedLead.id,
         message: responseError.message,
         code: responseError.code
+      });
+    }
+
+    try {
+      conversation = await updateConversationMemory(prisma, {
+        lead: savedLead,
+        incomingMessage: lead.message,
+        aiExtraction,
+        aiResponse,
+        existingConversation
+      });
+
+      console.log(`Conversation memory saved for lead ${savedLead.id}.`);
+    } catch (memoryError) {
+      console.error("Lead was saved, but conversation memory failed:", {
+        leadId: savedLead.id,
+        message: memoryError.message,
+        code: memoryError.code
       });
     }
 
@@ -101,6 +121,7 @@ async function createLead(req, res) {
       aiExtraction,
       aiResponse,
       conversation,
+      isExistingLead,
       emailSent
     });
   } catch (error) {

@@ -23,14 +23,20 @@ model Lead {
   source    String
   aiExtraction Json?
   createdAt DateTime @default(now())
+
+  @@index([email])
 }
 
 // A conversation stores the latest message and status for a lead follow-up.
 model Conversation {
-  id          Int    @id @default(autoincrement())
-  leadId      Int
-  lastMessage String
-  status      String
+  id           Int     @id @default(autoincrement())
+  leadId       Int
+  lastMessage  String
+  status       String
+  messageCount Int     @default(0)
+  aiSummary    String?
+
+  @@index([leadId])
 }
 
 // A booking stores an appointment time and status for a lead.

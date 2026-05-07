@@ -39,7 +39,20 @@ function cleanGeneratedResponse(value) {
   return value.replace(/\s+/g, " ").trim();
 }
 
-async function generateLeadResponse(lead, aiExtraction) {
+function formatConversationMemory(conversationMemory) {
+  if (!conversationMemory) {
+    return "No previous conversation memory.";
+  }
+
+  return [
+    `Previous message count: ${conversationMemory.messageCount || 0}`,
+    `Previous status: ${conversationMemory.status}`,
+    `Previous summary: ${conversationMemory.aiSummary || "none"}`,
+    `Previous last message: ${conversationMemory.lastMessage || "none"}`
+  ].join("\n");
+}
+
+async function generateLeadResponse(lead, aiExtraction, conversationMemory) {
   if (!process.env.OPENAI_API_KEY) {
     console.log("AI response generation skipped. Add OPENAI_API_KEY to .env to enable it.");
     return null;
@@ -64,6 +77,7 @@ async function generateLeadResponse(lead, aiExtraction) {
           content: [
             `Lead message: ${lead.message}`,
             `AI extraction: ${JSON.stringify(aiExtraction || {})}`,
+            `Conversation memory: ${formatConversationMemory(conversationMemory)}`,
             "If the lead wants a showing, ask for their preferred showing time. If details are missing, ask one useful follow-up question."
           ].join("\n")
         }
