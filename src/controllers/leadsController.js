@@ -1,5 +1,6 @@
 const { getPrismaClient } = require("../db");
 const { extractLeadDetails } = require("../services/aiExtractionService");
+const { generateLeadResponse } = require("../services/aiResponseService");
 const { sendLeadReplyEmail } = require("../services/emailService");
 const { normalizeLead } = require("../utils/normalizeLead");
 
@@ -56,6 +57,31 @@ async function createLead(req, res) {
       });
     }
 
+    let aiResponse = null;
+    let conversation = null;
+
+    try {
+      aiResponse = await generateLeadResponse(savedLead, aiExtraction);
+
+      if (aiResponse) {
+        conversation = await prisma.conversation.create({
+          data: {
+            leadId: savedLead.id,
+            lastMessage: aiResponse,
+            status: "ai_generated"
+          }
+        });
+
+        console.log(`AI response saved for lead ${savedLead.id}.`);
+      }
+    } catch (responseError) {
+      console.error("Lead was saved, but AI response generation failed:", {
+        leadId: savedLead.id,
+        message: responseError.message,
+        code: responseError.code
+      });
+    }
+
     let emailSent = false;
 
     try {
@@ -73,6 +99,8 @@ async function createLead(req, res) {
     return res.status(201).json({
       lead: savedLead,
       aiExtraction,
+      aiResponse,
+      conversation,
       emailSent
     });
   } catch (error) {
