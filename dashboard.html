@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lead Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #f4f7fb;
+      color: #172033;
+      font-family: "Inter", Arial, sans-serif;
+    }
+
+    .shell {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 32px 0;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 28px;
+      line-height: 1.2;
+    }
+
+    .meta {
+      margin: 6px 0 0;
+      color: #68758a;
+      font-size: 14px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 8px;
+      background: #2563eb;
+      color: #ffffff;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 700;
+      padding: 11px 16px;
+      transition: background 160ms ease, transform 160ms ease;
+      white-space: nowrap;
+    }
+
+    button:hover {
+      background: #1d4ed8;
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      cursor: wait;
+      opacity: 0.7;
+      transform: none;
+    }
+
+    .status {
+      min-height: 22px;
+      margin-bottom: 14px;
+      color: #68758a;
+      font-size: 14px;
+    }
+
+    .error {
+      color: #b42318;
+      font-weight: 600;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid #dbe3ef;
+      border-radius: 8px;
+      background: #ffffff;
+      box-shadow: 0 18px 45px rgba(26, 35, 57, 0.08);
+    }
+
+    table {
+      width: 100%;
+      min-width: 1120px;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid #e7edf5;
+      padding: 14px 16px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f8fafc;
+      color: #4a5870;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    td {
+      color: #1f2a3d;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .lead-name {
+      font-weight: 700;
+    }
+
+    .muted {
+      color: #68758a;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      background: #eef4ff;
+      color: #244da8;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 9px;
+    }
+
+    .message {
+      max-width: 260px;
+      white-space: normal;
+    }
+
+    @media (max-width: 720px) {
+      .shell {
+        width: min(100% - 20px, 1180px);
+        padding: 22px 0;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <div class="topbar">
+      <div>
+        <h1>Lead Dashboard</h1>
+        <p class="meta" id="leadCount">Recent leads</p>
+      </div>
+      <button id="refreshButton" type="button">Refresh</button>
+    </div>
+
+    <div class="status" id="status"></div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th>Source</th>
+            <th>Latest Message</th>
+            <th>AI Extraction</th>
+            <th>AI Response</th>
+            <th>Status</th>
+            <th>Created</th>
+          </tr>
+        </thead>
+        <tbody id="leadRows"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <script>
+    const refreshButton = document.getElementById("refreshButton");
+    const statusEl = document.getElementById("status");
+    const leadCountEl = document.getElementById("leadCount");
+    const leadRows = document.getElementById("leadRows");
+
+    function formatDate(value) {
+      if (!value) {
+        return "";
+      }
+
+      return new Intl.DateTimeFormat("en", {
+        dateStyle: "medium",
+        timeStyle: "short"
+      }).format(new Date(value));
+    }
+
+    function text(value) {
+      return value === undefined || value === null || value === "" ? "—" : value;
+    }
+
+    function escapeHtml(value) {
+      return String(text(value))
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function renderLeads(leads) {
+      leadRows.innerHTML = "";
+      leadCountEl.textContent = `${leads.length} recent lead${leads.length === 1 ? "" : "s"}`;
+
+      if (leads.length === 0) {
+        const emptyRow = document.createElement("tr");
+        emptyRow.innerHTML = '<td colspan="9" class="muted">No leads yet.</td>';
+        leadRows.appendChild(emptyRow);
+        return;
+      }
+
+      leads.forEach((lead) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td><div class="lead-name">${escapeHtml(lead.name)}</div></td>
+          <td>${escapeHtml(lead.email)}</td>
+          <td>${escapeHtml(lead.phone)}</td>
+          <td><span class="pill">${escapeHtml(lead.source)}</span></td>
+          <td class="message">${escapeHtml(lead.latestMessage)}</td>
+          <td class="message">${escapeHtml(lead.aiExtractionSummary)}</td>
+          <td class="message">${escapeHtml(lead.aiResponse)}</td>
+          <td>
+            <div>${escapeHtml(lead.conversationStatus)}</div>
+            <div class="muted">${lead.messageCount || 0} messages</div>
+          </td>
+          <td>${formatDate(lead.createdAt)}</td>
+        `;
+        leadRows.appendChild(row);
+      });
+    }
+
+    async function loadLeads() {
+      refreshButton.disabled = true;
+      refreshButton.textContent = "Refreshing...";
+      statusEl.className = "status";
+      statusEl.textContent = "Loading leads...";
+
+      try {
+        const response = await fetch("/api/leads");
+
+        if (!response.ok) {
+          throw new Error("Request failed");
+        }
+
+        const data = await response.json();
+        renderLeads(data.leads || []);
+        statusEl.textContent = `Updated ${formatDate(new Date().toISOString())}`;
+      } catch (error) {
+        statusEl.className = "status error";
+        statusEl.textContent = "Could not load leads.";
+      } finally {
+        refreshButton.disabled = false;
+        refreshButton.textContent = "Refresh";
+      }
+    }
+
+    refreshButton.addEventListener("click", loadLeads);
+    loadLeads();
+  </script>
+</body>
+</html>

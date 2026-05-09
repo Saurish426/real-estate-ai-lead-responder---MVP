@@ -11,6 +11,83 @@ const { normalizeLead } = require("../utils/normalizeLead");
 
 const REQUIRED_LEAD_FIELDS = ["name", "email", "phone", "message", "source"];
 
+function formatAiExtractionSummary(aiExtraction) {
+  if (!aiExtraction) {
+    return "Not available";
+  }
+
+  return [
+    `Intent: ${aiExtraction.intent || "unknown"}`,
+    `Showing: ${aiExtraction.wants_showing === true ? "yes" : "no"}`,
+    `Timeline: ${aiExtraction.timeline || "unknown"}`,
+    `Budget: ${aiExtraction.budget || "unknown"}`,
+    `Confidence: ${aiExtraction.confidence ?? "unknown"}`
+  ].join(" | ");
+}
+
+async function listLeads(req, res) {
+  try {
+    const prisma = getPrismaClient();
+    const leads = await prisma.lead.findMany({
+      orderBy: {
+        createdAt: "desc"
+      },
+      take: 50
+    });
+    const conversations = await prisma.conversation.findMany({
+      where: {
+        leadId: {
+          in: leads.map((lead) => lead.id)
+        }
+      },
+      orderBy: {
+        id: "desc"
+      }
+    });
+    const conversationByLeadId = new Map();
+
+    conversations.forEach((conversation) => {
+      if (!conversationByLeadId.has(conversation.leadId)) {
+        conversationByLeadId.set(conversation.leadId, conversation);
+      }
+    });
+
+    return res.json({
+      leads: leads.map((lead) => {
+        const conversation = conversationByLeadId.get(lead.id) || null;
+        const aiResponse = conversation && conversation.status === "ai_generated" ? conversation.lastMessage : null;
+
+        return {
+          id: lead.id,
+          name: lead.name,
+          email: lead.email,
+          phone: lead.phone,
+          source: lead.source,
+          latestMessage: lead.message,
+          aiExtraction: lead.aiExtraction,
+          aiExtractionSummary: formatAiExtractionSummary(lead.aiExtraction),
+          aiResponse,
+          conversationStatus: conversation ? conversation.status : "none",
+          messageCount: conversation ? conversation.messageCount : 0,
+          aiSummary: conversation ? conversation.aiSummary : null,
+          conversation,
+          createdAt: lead.createdAt
+        };
+      })
+    });
+  } catch (error) {
+    console.error("Error listing leads:", {
+      message: error.message,
+      code: error.code,
+      stack: error.stack
+    });
+
+    return res.status(500).json({
+      error: "Unable to list leads."
+    });
+  }
+}
+
 async function createLead(req, res) {
   const lead = normalizeLead(req.body, {
     defaultSource: "website"
@@ -138,5 +215,6 @@ async function createLead(req, res) {
 }
 
 module.exports = {
-  createLead
+  createLead,
+  listLeads
 };

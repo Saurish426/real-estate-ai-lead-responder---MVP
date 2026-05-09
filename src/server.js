@@ -63,6 +63,11 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(process.cwd(), "index.html"));
 });
 
+// Show the lightweight internal lead dashboard.
+app.get("/dashboard", (req, res) => {
+  res.sendFile(path.join(process.cwd(), "dashboard.html"));
+});
+
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
