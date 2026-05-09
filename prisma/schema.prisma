@@ -46,3 +46,16 @@ model Booking {
   time   DateTime
   status String
 }
+
+// AgentSettings stores the simple business profile used by the AI reply writer.
+model AgentSettings {
+  id                 Int      @id
+  agentName          String   @default("AI Lead Responder")
+  agentEmail         String   @default("")
+  agentPhone         String   @default("")
+  businessName       String   @default("Real Estate Team")
+  calendarLink       String   @default("")
+  preferredReplyTone String   @default("friendly and professional")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}

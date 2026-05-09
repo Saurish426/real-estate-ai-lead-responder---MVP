@@ -47,6 +47,7 @@ loadEnvFile();
 
 const testRoutes = require("./routes/test");
 const leadsRoutes = require("./routes/leads");
+const settingsRoutes = require("./routes/settings");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -57,6 +58,7 @@ app.use(express.json());
 // Each route file owns one small part of the API.
 app.use("/api/test", testRoutes);
 app.use("/api/leads", leadsRoutes);
+app.use("/api/settings", settingsRoutes);
 
 // Show the simple website lead form at the home page.
 app.get("/", (req, res) => {
@@ -66,6 +68,11 @@ app.get("/", (req, res) => {
 // Show the lightweight internal lead dashboard.
 app.get("/dashboard", (req, res) => {
   res.sendFile(path.join(process.cwd(), "dashboard.html"));
+});
+
+// Show the basic agent settings form.
+app.get("/settings", (req, res) => {
+  res.sendFile(path.join(process.cwd(), "settings.html"));
 });
 
 app.listen(PORT, () => {

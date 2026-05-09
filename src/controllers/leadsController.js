@@ -7,6 +7,7 @@ const {
   updateConversationMemory
 } = require("../services/conversationMemoryService");
 const { sendLeadReplyEmail } = require("../services/emailService");
+const { getAgentSettings } = require("../services/settingsService");
 const { normalizeLead } = require("../utils/normalizeLead");
 
 const REQUIRED_LEAD_FIELDS = ["name", "email", "phone", "message", "source"];
@@ -150,9 +151,20 @@ async function createLead(req, res) {
 
     let aiResponse = null;
     let conversation = null;
+    let agentSettings = null;
 
     try {
-      aiResponse = await generateLeadResponse(savedLead, aiExtraction, existingConversation);
+      agentSettings = await getAgentSettings(prisma);
+    } catch (settingsError) {
+      console.error("Lead was saved, but agent settings lookup failed. Safe defaults will be used:", {
+        leadId: savedLead.id,
+        message: settingsError.message,
+        code: settingsError.code
+      });
+    }
+
+    try {
+      aiResponse = await generateLeadResponse(savedLead, aiExtraction, existingConversation, agentSettings);
     } catch (responseError) {
       console.error("Lead was saved, but AI response generation failed:", {
         leadId: savedLead.id,

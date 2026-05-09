@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agent Settings</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top left, rgba(37, 99, 235, 0.14), transparent 34%),
+        linear-gradient(135deg, #f7fafc 0%, #edf4ff 100%);
+      color: #172033;
+      font-family: "Inter", Arial, sans-serif;
+    }
+
+    .page {
+      display: grid;
+      min-height: 100vh;
+      padding: 32px 18px;
+      place-items: center;
+    }
+
+    .panel {
+      width: min(720px, 100%);
+      border: 1px solid #dbe3ef;
+      border-radius: 8px;
+      background: #ffffff;
+      box-shadow: 0 24px 60px rgba(26, 35, 57, 0.13);
+      padding: 30px;
+    }
+
+    .header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 24px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 28px;
+      line-height: 1.15;
+    }
+
+    .subtitle {
+      margin: 8px 0 0;
+      color: #64748b;
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    .link {
+      color: #2563eb;
+      font-size: 14px;
+      font-weight: 700;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .field {
+      display: grid;
+      gap: 7px;
+    }
+
+    .field.full {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      color: #334155;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    input,
+    select {
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      color: #172033;
+      font: inherit;
+      font-size: 15px;
+      padding: 12px 13px;
+      outline: none;
+      transition: border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    input:focus,
+    select:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.13);
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-top: 22px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 8px;
+      background: #2563eb;
+      color: #ffffff;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 700;
+      padding: 12px 18px;
+      transition: background 160ms ease, transform 160ms ease;
+    }
+
+    button:hover {
+      background: #1d4ed8;
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      cursor: wait;
+      opacity: 0.72;
+      transform: none;
+    }
+
+    .status {
+      min-height: 22px;
+      color: #64748b;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .status.success {
+      color: #027a48;
+    }
+
+    .status.error {
+      color: #b42318;
+    }
+
+    @media (max-width: 680px) {
+      .panel {
+        padding: 22px;
+      }
+
+      .header,
+      .actions {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="panel">
+      <div class="header">
+        <div>
+          <h1>Agent Settings</h1>
+          <p class="subtitle">Save the business details the AI can use when writing lead replies.</p>
+        </div>
+        <a class="link" href="/dashboard">Dashboard</a>
+      </div>
+
+      <form id="settingsForm">
+        <div class="grid">
+          <div class="field">
+            <label for="agentName">Agent name</label>
+            <input id="agentName" name="agentName" type="text" autocomplete="name">
+          </div>
+
+          <div class="field">
+            <label for="businessName">Business name</label>
+            <input id="businessName" name="businessName" type="text" autocomplete="organization">
+          </div>
+
+          <div class="field">
+            <label for="agentEmail">Agent email</label>
+            <input id="agentEmail" name="agentEmail" type="email" autocomplete="email">
+          </div>
+
+          <div class="field">
+            <label for="agentPhone">Agent phone</label>
+            <input id="agentPhone" name="agentPhone" type="tel" autocomplete="tel">
+          </div>
+
+          <div class="field full">
+            <label for="calendarLink">Calendar link</label>
+            <input id="calendarLink" name="calendarLink" type="url" placeholder="https://calendly.com/your-link">
+          </div>
+
+          <div class="field full">
+            <label for="preferredReplyTone">Preferred reply tone</label>
+            <select id="preferredReplyTone" name="preferredReplyTone">
+              <option value="friendly and professional">Friendly and professional</option>
+              <option value="warm and concise">Warm and concise</option>
+              <option value="polished and helpful">Polished and helpful</option>
+              <option value="casual and upbeat">Casual and upbeat</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="saveButton" type="submit">Save Settings</button>
+          <div class="status" id="status"></div>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <script>
+    const form = document.getElementById("settingsForm");
+    const saveButton = document.getElementById("saveButton");
+    const statusEl = document.getElementById("status");
+
+    function setStatus(message, type) {
+      statusEl.textContent = message;
+      statusEl.className = type ? `status ${type}` : "status";
+    }
+
+    function fillForm(settings) {
+      Object.entries(settings || {}).forEach(([key, value]) => {
+        const input = form.elements[key];
+
+        if (input) {
+          input.value = value || "";
+        }
+      });
+    }
+
+    function getFormData() {
+      return {
+        agentName: form.elements.agentName.value,
+        agentEmail: form.elements.agentEmail.value,
+        agentPhone: form.elements.agentPhone.value,
+        businessName: form.elements.businessName.value,
+        calendarLink: form.elements.calendarLink.value,
+        preferredReplyTone: form.elements.preferredReplyTone.value
+      };
+    }
+
+    async function loadSettings() {
+      setStatus("Loading settings...");
+
+      try {
+        const response = await fetch("/api/settings");
+
+        if (!response.ok) {
+          throw new Error("Could not load settings.");
+        }
+
+        const data = await response.json();
+        fillForm(data.settings);
+        setStatus("");
+      } catch (error) {
+        setStatus("Could not load settings.", "error");
+      }
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      saveButton.disabled = true;
+      saveButton.textContent = "Saving...";
+      setStatus("Saving settings...");
+
+      try {
+        const response = await fetch("/api/settings", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(getFormData())
+        });
+
+        if (!response.ok) {
+          throw new Error("Could not save settings.");
+        }
+
+        const data = await response.json();
+        fillForm(data.settings);
+        setStatus("Settings saved.", "success");
+      } catch (error) {
+        setStatus("Could not save settings.", "error");
+      } finally {
+        saveButton.disabled = false;
+        saveButton.textContent = "Save Settings";
+      }
+    });
+
+    loadSettings();
+  </script>
+</body>
+</html>
