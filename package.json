@@ -3,9 +3,14 @@
   "version": "1.0.0",
   "description": "Backend foundation for the Real Estate AI Lead Responder MVP.",
   "main": "src/server.js",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
+    "prisma:generate": "prisma generate",
+    "db:deploy": "prisma migrate deploy",
     "capture:gmail-test": "node src/scripts/captureTestGmailLead.js"
   },
   "dependencies": {

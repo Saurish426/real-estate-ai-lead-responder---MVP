@@ -1,6 +1,7 @@
 node_modules/
 .env
 *.log
+*.err
 server.err
 
 /src/generated/prisma

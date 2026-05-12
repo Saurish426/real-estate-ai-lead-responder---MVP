@@ -60,6 +60,14 @@ app.use("/api/test", testRoutes);
 app.use("/api/leads", leadsRoutes);
 app.use("/api/settings", settingsRoutes);
 
+// Deployment platforms can call this route to confirm the app is alive.
+app.get("/health", (req, res) => {
+  res.json({
+    status: "ok",
+    environment: process.env.NODE_ENV || "development"
+  });
+});
+
 // Show the simple website lead form at the home page.
 app.get("/", (req, res) => {
   res.sendFile(path.join(process.cwd(), "index.html"));
@@ -73,6 +81,31 @@ app.get("/dashboard", (req, res) => {
 // Show the basic agent settings form.
 app.get("/settings", (req, res) => {
   res.sendFile(path.join(process.cwd(), "settings.html"));
+});
+
+// Return a small JSON 404 instead of the default HTML error page for unknown routes.
+app.use((req, res) => {
+  res.status(404).json({
+    error: "Route not found."
+  });
+});
+
+// Keep production error responses generic while still logging useful details.
+app.use((error, req, res, next) => {
+  const statusCode = error.status || error.statusCode || 500;
+  const safeStatusCode = statusCode >= 400 && statusCode < 600 ? statusCode : 500;
+
+  console.error("Unhandled server error:", {
+    method: req.method,
+    path: req.path,
+    message: error.message,
+    code: error.code,
+    stack: process.env.NODE_ENV === "production" ? undefined : error.stack
+  });
+
+  res.status(safeStatusCode).json({
+    error: safeStatusCode === 400 ? "Invalid request body." : "Internal server error."
+  });
 });
 
 app.listen(PORT, () => {

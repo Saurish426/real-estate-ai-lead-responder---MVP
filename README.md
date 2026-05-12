@@ -1,13 +1,16 @@
-# real-estate-ai-lead-responder---MVP
+# Real Estate AI Lead Responder MVP
 
-Backend foundation for the Real Estate AI Lead Responder MVP.
+Node.js + Express MVP for capturing real estate leads, saving them to PostgreSQL with Prisma, sending Gmail replies, extracting lead intent with OpenAI, generating AI response drafts, storing conversation memory, and viewing leads/settings in simple web pages.
 
 ## Requirements
 
 - Node.js 18 or newer
 - npm
+- PostgreSQL database
+- Gmail app password for outgoing email
+- OpenAI API key
 
-## Setup
+## Local Setup
 
 Install dependencies:
 
@@ -21,6 +24,20 @@ Create a local environment file:
 cp .env.example .env
 ```
 
+Fill in `.env` with your local secrets. Do not commit `.env`.
+
+Generate Prisma Client:
+
+```bash
+npm run prisma:generate
+```
+
+Apply database migrations:
+
+```bash
+npm run db:deploy
+```
+
 Start the development server:
 
 ```bash
@@ -30,12 +47,79 @@ npm run dev
 Start the production-style server:
 
 ```bash
-npm start
+npm run start
 ```
 
-The server uses `PORT` from `.env`. If no port is set, it runs on port `3000`.
+The server uses `PORT` from the environment. If no port is set, it runs on port `3000`.
 
-## Test Website Lead Form
+## Required Environment Variables
+
+Set these in `.env` locally and in your deployment platform:
+
+```bash
+DATABASE_URL=
+OPENAI_API_KEY=
+EMAIL_USER=
+EMAIL_APP_PASSWORD=
+EMAIL_FROM=
+GMAIL_LEAD_CAPTURE_ENABLED=false
+```
+
+Keep `GMAIL_LEAD_CAPTURE_ENABLED=false` unless you intentionally enable future automatic Gmail polling. The current Gmail capture script is manual.
+
+## App Routes
+
+- Lead form: `http://localhost:3000/`
+- Dashboard: `http://localhost:3000/dashboard`
+- Agent settings: `http://localhost:3000/settings`
+- Health check: `http://localhost:3000/health`
+
+## API Routes
+
+Health check:
+
+```bash
+curl http://localhost:3000/health
+```
+
+Expected response:
+
+```json
+{
+  "status": "ok",
+  "environment": "development"
+}
+```
+
+Create a website lead:
+
+```bash
+curl -X POST http://localhost:3000/api/leads \
+  -H "Content-Type: application/json" \
+  -d "{\"name\":\"Alex Agent\",\"email\":\"alex@example.com\",\"phone\":\"555-123-4567\",\"message\":\"I would like to schedule a showing this weekend.\",\"source\":\"website\"}"
+```
+
+Get recent leads for the dashboard:
+
+```bash
+curl http://localhost:3000/api/leads
+```
+
+Get agent settings:
+
+```bash
+curl http://localhost:3000/api/settings
+```
+
+Save agent settings:
+
+```bash
+curl -X POST http://localhost:3000/api/settings \
+  -H "Content-Type: application/json" \
+  -d "{\"agentName\":\"Your Name\",\"agentEmail\":\"you@example.com\",\"agentPhone\":\"555-123-4567\",\"businessName\":\"Your Realty Team\",\"calendarLink\":\"https://calendly.com/your-link\",\"preferredReplyTone\":\"friendly and professional\"}"
+```
+
+## Website Lead Form Test
 
 Start the server:
 
@@ -43,36 +127,19 @@ Start the server:
 npm run dev
 ```
 
-Open the lead form in your browser:
+Open:
 
 ```text
 http://localhost:3000
 ```
 
-Fill out the name, email, phone, and message fields, then submit the form.
-
-Expected success message:
+Submit the form. Expected success message:
 
 ```text
 Thanks! We will get back to you shortly.
 ```
 
-The form sends the lead to:
-
-```text
-http://localhost:3000/api/leads
-```
-
-## Email Reply Settings
-
-The lead form saves each lead to the database, then sends a simple Gmail reply email. Add these values to your local `.env` file:
-
-```bash
-EMAIL_USER="your-gmail-address@gmail.com"
-EMAIL_APP_PASSWORD="your-gmail-app-password"
-EMAIL_FROM="your-gmail-address@gmail.com"
-GMAIL_LEAD_CAPTURE_ENABLED=false
-```
+The form posts to `/api/leads`, which works locally and after deployment.
 
 ## Manual Gmail Lead Capture Test
 
@@ -90,41 +157,27 @@ npm run capture:gmail-test
 
 The script reads only the newest unread email with that exact subject, creates one lead with `source = email`, marks that email as read, and exits.
 
-## Test Routes
+## Deployment
 
-Check that the API is running:
+Recommended platforms:
 
-```bash
-curl http://localhost:3000/api/test
-```
+- Render
+- Railway
 
-Expected response:
+Use these deployment settings:
 
-```json
-{
-  "status": "working"
-}
-```
+- Build command: `npm install && npm run prisma:generate && npm run db:deploy`
+- Start command: `npm run start`
+- Health check path: `/health`
 
-Create a lead:
+Add the required environment variables in the platform dashboard. Do not paste secrets into code, README files, screenshots, or Git commits.
 
-```bash
-curl -X POST http://localhost:3000/api/leads \
-  -H "Content-Type: application/json" \
-  -d "{\"name\":\"Alex Agent\",\"email\":\"alex@example.com\",\"phone\":\"555-123-4567\",\"message\":\"I want to sell my home.\",\"source\":\"website\"}"
-```
+For Render, create a Web Service from this GitHub repo, select Node, set the build/start commands above, and add the environment variables. For Railway, create a new service from the repo, set the same commands, and add the same variables.
 
-Expected response:
+## Production Notes
 
-```json
-{
-  "lead": {
-    "name": "Alex Agent",
-    "email": "alex@example.com",
-    "phone": "555-123-4567",
-    "message": "I want to sell my home.",
-    "source": "website"
-  },
-  "emailSent": true
-}
-```
+- The app uses environment variables for database, email, OpenAI, and Gmail capture settings.
+- `.env` is ignored by Git and should stay local.
+- Unknown routes return JSON `404` responses.
+- Unexpected server errors are logged, but production responses stay generic.
+- AI extraction or AI response failures are logged without blocking lead saving or email sending.
