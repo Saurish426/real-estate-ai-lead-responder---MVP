@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Try the AI Lead Responder</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 12% 8%, rgba(37, 99, 235, 0.14), transparent 32%),
+        linear-gradient(135deg, #f8fafc 0%, #eef6ff 52%, #f2fbf7 100%);
+      color: #172033;
+      font-family: "Inter", Arial, sans-serif;
+    }
+
+    .shell {
+      width: min(1160px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 38px 0;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .brand {
+      color: #2563eb;
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    .nav {
+      display: flex;
+      gap: 14px;
+    }
+
+    .nav a {
+      color: #334155;
+      font-size: 14px;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 0.9fr) minmax(420px, 1.1fr);
+      gap: 26px;
+      align-items: start;
+    }
+
+    .intro {
+      padding-top: 10px;
+    }
+
+    h1 {
+      margin: 0;
+      color: #0f172a;
+      font-size: clamp(2.2rem, 5vw, 4.5rem);
+      line-height: 1.02;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      max-width: 620px;
+      margin: 18px 0 24px;
+      color: #4b5d73;
+      font-size: 1.08rem;
+      line-height: 1.7;
+    }
+
+    .sample-grid {
+      display: grid;
+      gap: 12px;
+      margin-top: 22px;
+    }
+
+    .sample-button {
+      width: 100%;
+      border: 1px solid #d7e1ef;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.8);
+      color: #172033;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 800;
+      padding: 14px 16px;
+      text-align: left;
+      transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+    }
+
+    .sample-button:hover,
+    .sample-button.active {
+      border-color: #2563eb;
+      box-shadow: 0 14px 28px rgba(37, 99, 235, 0.13);
+      transform: translateY(-1px);
+    }
+
+    .sample-button span {
+      display: block;
+      margin-top: 4px;
+      color: #64748b;
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.45;
+    }
+
+    .card {
+      border: 1px solid #dbe3ef;
+      border-radius: 8px;
+      background: #ffffff;
+      box-shadow: 0 24px 60px rgba(26, 35, 57, 0.12);
+      padding: 28px;
+    }
+
+    .form-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    h2 {
+      margin: 0;
+      color: #0f172a;
+      font-size: 1.25rem;
+      line-height: 1.25;
+    }
+
+    .status-pill {
+      border-radius: 999px;
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-size: 12px;
+      font-weight: 800;
+      padding: 6px 10px;
+      white-space: nowrap;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 15px;
+    }
+
+    .field {
+      display: grid;
+      gap: 7px;
+    }
+
+    .field.full {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      color: #334155;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    input,
+    textarea {
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: #f8fafc;
+      color: #172033;
+      font: inherit;
+      padding: 12px 13px;
+      outline: none;
+      transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+    }
+
+    input:focus,
+    textarea:focus {
+      border-color: #2563eb;
+      background: #ffffff;
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.13);
+    }
+
+    textarea {
+      min-height: 112px;
+      resize: vertical;
+    }
+
+    .submit-button {
+      width: 100%;
+      border: 0;
+      border-radius: 8px;
+      background: #2563eb;
+      color: #ffffff;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 800;
+      margin-top: 18px;
+      padding: 14px 16px;
+      transition: background 160ms ease, transform 160ms ease;
+    }
+
+    .submit-button:hover {
+      background: #1d4ed8;
+      transform: translateY(-1px);
+    }
+
+    .submit-button:disabled {
+      cursor: wait;
+      opacity: 0.74;
+      transform: none;
+    }
+
+    .result {
+      display: none;
+      margin-top: 18px;
+      border: 1px solid #dbe3ef;
+      border-radius: 8px;
+      background: #f8fafc;
+      padding: 16px;
+    }
+
+    .result.visible {
+      display: block;
+    }
+
+    .result.error {
+      border-color: #fecaca;
+      background: #fff1f2;
+      color: #991b1b;
+      font-weight: 700;
+    }
+
+    .result-grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .result-item {
+      display: grid;
+      gap: 4px;
+    }
+
+    .result-label {
+      color: #64748b;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .result-value {
+      color: #172033;
+      font-size: 14px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+
+    .success {
+      color: #027a48;
+      font-weight: 800;
+    }
+
+    @media (max-width: 920px) {
+      .hero {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .shell {
+        width: min(100% - 22px, 1160px);
+        padding: 24px 0;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .nav {
+        flex-wrap: wrap;
+      }
+
+      .card {
+        padding: 22px;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .form-title {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand">AI Lead Responder</div>
+      <nav class="nav" aria-label="Demo navigation">
+        <a href="/">Lead Form</a>
+        <a href="/dashboard">Dashboard</a>
+        <a href="/settings">Settings</a>
+      </nav>
+    </header>
+
+    <section class="hero">
+      <div class="intro">
+        <h1>Try the AI Lead Responder</h1>
+        <p class="subtitle">This tool responds to real estate leads instantly, qualifies them, and helps agents book showings.</p>
+
+        <div class="sample-grid" aria-label="Sample leads">
+          <button class="sample-button" type="button" data-sample="buyer">
+            Buyer interested in showing
+            <span>Great for testing tour requests and showing intent.</span>
+          </button>
+          <button class="sample-button" type="button" data-sample="seller">
+            Seller asking about listing
+            <span>Great for testing listing and valuation follow-up.</span>
+          </button>
+          <button class="sample-button" type="button" data-sample="info">
+            General property info request
+            <span>Great for testing basic property questions.</span>
+          </button>
+        </div>
+      </div>
+
+      <section class="card" aria-label="Demo lead form">
+        <div class="form-title">
+          <h2>Demo Lead</h2>
+          <span class="status-pill">Live API Demo</span>
+        </div>
+
+        <form id="demoForm">
+          <div class="grid">
+            <div class="field">
+              <label for="name">Name</label>
+              <input id="name" name="name" type="text" required>
+            </div>
+
+            <div class="field">
+              <label for="email">Email</label>
+              <input id="email" name="email" type="email" required>
+            </div>
+
+            <div class="field">
+              <label for="phone">Phone</label>
+              <input id="phone" name="phone" type="tel" required>
+            </div>
+
+            <div class="field">
+              <label for="source">Source</label>
+              <input id="source" name="source" type="text" value="demo" required>
+            </div>
+
+            <div class="field full">
+              <label for="message">Message</label>
+              <textarea id="message" name="message" required></textarea>
+            </div>
+          </div>
+
+          <button id="submitButton" class="submit-button" type="submit">Submit Demo Lead</button>
+        </form>
+
+        <section id="result" class="result" aria-live="polite"></section>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const samples = {
+      buyer: {
+        name: "Jordan Buyer",
+        email: "jordan.buyer@example.com",
+        phone: "555-120-4567",
+        message: "Hi, I am interested in the house. Is it still available? I would like to schedule a showing this weekend.",
+        source: "demo"
+      },
+      seller: {
+        name: "Sam Seller",
+        email: "sam.seller@example.com",
+        phone: "555-340-7788",
+        message: "I am thinking about selling my home and want to know what it could list for. Can someone help me understand the process?",
+        source: "demo"
+      },
+      info: {
+        name: "Taylor Info",
+        email: "taylor.info@example.com",
+        phone: "555-905-2211",
+        message: "Can you send me more information about this property, including the HOA fees and neighborhood details?",
+        source: "demo"
+      }
+    };
+
+    const form = document.getElementById("demoForm");
+    const result = document.getElementById("result");
+    const submitButton = document.getElementById("submitButton");
+    const sampleButtons = document.querySelectorAll("[data-sample]");
+
+    function setLoading(isLoading) {
+      submitButton.disabled = isLoading;
+      submitButton.textContent = isLoading ? "Submitting..." : "Submit Demo Lead";
+    }
+
+    function escapeHtml(value) {
+      return String(value === undefined || value === null || value === "" ? "Not available" : value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function fillForm(sampleKey) {
+      const sample = samples[sampleKey];
+
+      if (!sample) {
+        return;
+      }
+
+      form.name.value = sample.name;
+      form.email.value = sample.email.replace("@", `+${Date.now()}@`);
+      form.phone.value = sample.phone;
+      form.message.value = sample.message;
+      form.source.value = sample.source;
+
+      sampleButtons.forEach((button) => {
+        button.classList.toggle("active", button.dataset.sample === sampleKey);
+      });
+
+      result.className = "result";
+      result.innerHTML = "";
+    }
+
+    function formatExtraction(aiExtraction) {
+      if (!aiExtraction) {
+        return "AI extraction was not available.";
+      }
+
+      return [
+        `Intent: ${aiExtraction.intent || "unknown"}`,
+        `Wants showing: ${aiExtraction.wants_showing === true ? "yes" : "no"}`,
+        `Timeline: ${aiExtraction.timeline || "unknown"}`,
+        `Budget: ${aiExtraction.budget || "unknown"}`,
+        `Confidence: ${aiExtraction.confidence ?? "unknown"}`
+      ].join("\n");
+    }
+
+    function showResult(data) {
+      result.className = "result visible";
+      result.innerHTML = `
+        <div class="result-grid">
+          <div class="result-item">
+            <div class="result-label">Lead saved</div>
+            <div class="result-value success">${data.lead && data.lead.id ? "Yes" : "No"}</div>
+          </div>
+          <div class="result-item">
+            <div class="result-label">AI extraction summary</div>
+            <div class="result-value">${escapeHtml(formatExtraction(data.aiExtraction))}</div>
+          </div>
+          <div class="result-item">
+            <div class="result-label">AI response</div>
+            <div class="result-value">${escapeHtml(data.aiResponse)}</div>
+          </div>
+          <div class="result-item">
+            <div class="result-label">Email sent</div>
+            <div class="result-value ${data.emailSent ? "success" : ""}">${data.emailSent ? "Yes" : "No"}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function showError() {
+      result.className = "result visible error";
+      result.textContent = "Demo lead could not be submitted. Please check the server logs and try again.";
+    }
+
+    sampleButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        fillForm(button.dataset.sample);
+      });
+    });
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      setLoading(true);
+      result.className = "result";
+      result.innerHTML = "";
+
+      const lead = {
+        name: form.name.value.trim(),
+        email: form.email.value.trim(),
+        phone: form.phone.value.trim(),
+        message: form.message.value.trim(),
+        source: form.source.value.trim() || "demo"
+      };
+
+      try {
+        const response = await fetch("/api/leads", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(lead)
+        });
+
+        if (!response.ok) {
+          throw new Error("Request failed");
+        }
+
+        showResult(await response.json());
+      } catch (error) {
+        showError();
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    fillForm("buyer");
+  </script>
+</body>
+</html>

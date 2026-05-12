@@ -83,6 +83,11 @@ app.get("/settings", (req, res) => {
   res.sendFile(path.join(process.cwd(), "settings.html"));
 });
 
+// Show a guided demo for real estate agents.
+app.get("/demo", (req, res) => {
+  res.sendFile(path.join(process.cwd(), "demo.html"));
+});
+
 // Return a small JSON 404 instead of the default HTML error page for unknown routes.
 app.use((req, res) => {
   res.status(404).json({
