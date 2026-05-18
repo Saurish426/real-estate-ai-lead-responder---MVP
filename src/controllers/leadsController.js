@@ -26,6 +26,30 @@ function formatAiExtractionSummary(aiExtraction) {
   ].join(" | ");
 }
 
+function getAiConfidence(aiExtraction) {
+  const confidence = Number(aiExtraction && aiExtraction.confidence);
+  return Number.isFinite(confidence) ? confidence : null;
+}
+
+function getLeadStatus({ aiExtraction, emailSent, agentNotificationSent, conversation }) {
+  const intent = aiExtraction && aiExtraction.intent ? aiExtraction.intent : "unknown";
+  const confidence = getAiConfidence(aiExtraction);
+
+  if (aiExtraction && aiExtraction.wants_showing === true) {
+    return "needs_handoff";
+  }
+
+  if ((intent === "buyer" || intent === "seller" || intent === "showing_request") && confidence !== null && confidence >= 0.5) {
+    return "qualified";
+  }
+
+  if (emailSent || agentNotificationSent || conversation) {
+    return "contacted";
+  }
+
+  return "new";
+}
+
 async function listLeads(req, res) {
   try {
     const prisma = getPrismaClient();
@@ -57,6 +81,15 @@ async function listLeads(req, res) {
       leads: leads.map((lead) => {
         const conversation = conversationByLeadId.get(lead.id) || null;
         const aiResponse = conversation && conversation.status === "ai_generated" ? conversation.lastMessage : null;
+        const aiConfidence = getAiConfidence(lead.aiExtraction);
+        const emailSent = lead.emailSent === true;
+        const agentNotificationSent = lead.agentNotificationSent === true;
+        const leadStatus = getLeadStatus({
+          aiExtraction: lead.aiExtraction,
+          emailSent,
+          agentNotificationSent,
+          conversation
+        });
 
         return {
           id: lead.id,
@@ -64,10 +97,17 @@ async function listLeads(req, res) {
           email: lead.email,
           phone: lead.phone,
           source: lead.source,
+          status: leadStatus,
+          leadStatus,
           latestMessage: lead.message,
           aiExtraction: lead.aiExtraction,
           aiExtractionSummary: formatAiExtractionSummary(lead.aiExtraction),
+          aiIntent: lead.aiExtraction ? lead.aiExtraction.intent || "unknown" : "unknown",
+          wantsShowing: lead.aiExtraction ? lead.aiExtraction.wants_showing === true : false,
+          aiConfidence,
           aiResponse,
+          emailSent,
+          agentNotificationSent,
           conversationStatus: conversation ? conversation.status : "none",
           messageCount: conversation ? conversation.messageCount : 0,
           aiSummary: conversation ? conversation.aiSummary : null,
@@ -222,6 +262,24 @@ async function createLead(req, res) {
         leadId: savedLead.id,
         message: notificationError.message,
         code: notificationError.code
+      });
+    }
+
+    try {
+      savedLead = await prisma.lead.update({
+        where: {
+          id: savedLead.id
+        },
+        data: {
+          emailSent,
+          agentNotificationSent
+        }
+      });
+    } catch (statusUpdateError) {
+      console.error("Lead was saved, but email status update failed:", {
+        leadId: savedLead.id,
+        message: statusUpdateError.message,
+        code: statusUpdateError.code
       });
     }
 

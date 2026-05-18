@@ -22,6 +22,8 @@ model Lead {
   message   String
   source    String
   aiExtraction Json?
+  emailSent Boolean @default(false)
+  agentNotificationSent Boolean @default(false)
   createdAt DateTime @default(now())
 
   @@index([email])

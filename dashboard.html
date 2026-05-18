@@ -6,7 +6,7 @@
   <title>Lead Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     * {
       box-sizing: border-box;
@@ -15,35 +15,51 @@
     body {
       margin: 0;
       min-height: 100vh;
-      background: #f4f7fb;
+      background: #f5f7fb;
       color: #172033;
       font-family: "Inter", Arial, sans-serif;
     }
 
     .shell {
-      width: min(1180px, calc(100% - 32px));
+      width: min(1320px, calc(100% - 32px));
       margin: 0 auto;
-      padding: 32px 0;
+      padding: 30px 0;
     }
 
     .topbar {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: space-between;
-      gap: 16px;
-      margin-bottom: 20px;
+      gap: 18px;
+      margin-bottom: 22px;
     }
 
     h1 {
       margin: 0;
-      font-size: 28px;
+      color: #0f172a;
+      font-size: 30px;
       line-height: 1.2;
     }
 
     .meta {
-      margin: 6px 0 0;
-      color: #68758a;
+      margin: 7px 0 0;
+      color: #64748b;
       font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .nav-link {
+      color: #334155;
+      font-size: 14px;
+      font-weight: 800;
+      text-decoration: none;
+      white-space: nowrap;
     }
 
     button {
@@ -53,7 +69,7 @@
       color: #ffffff;
       cursor: pointer;
       font: inherit;
-      font-weight: 700;
+      font-weight: 800;
       padding: 11px 16px;
       transition: background 160ms ease, transform 160ms ease;
       white-space: nowrap;
@@ -66,20 +82,51 @@
 
     button:disabled {
       cursor: wait;
-      opacity: 0.7;
+      opacity: 0.72;
       transform: none;
     }
 
-    .status {
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    .stat-card {
+      border: 1px solid #dbe3ef;
+      border-radius: 8px;
+      background: #ffffff;
+      box-shadow: 0 12px 32px rgba(26, 35, 57, 0.07);
+      padding: 18px;
+    }
+
+    .stat-label {
+      color: #64748b;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    .stat-value {
+      margin-top: 8px;
+      color: #0f172a;
+      font-size: 30px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .status-line {
       min-height: 22px;
       margin-bottom: 14px;
-      color: #68758a;
+      color: #64748b;
       font-size: 14px;
     }
 
-    .error {
+    .status-line.error {
       color: #b42318;
-      font-weight: 600;
+      font-weight: 700;
     }
 
     .table-wrap {
@@ -92,7 +139,7 @@
 
     table {
       width: 100%;
-      min-width: 1120px;
+      min-width: 1260px;
       border-collapse: collapse;
     }
 
@@ -106,9 +153,9 @@
 
     th {
       background: #f8fafc;
-      color: #4a5870;
+      color: #475569;
       font-size: 12px;
-      font-weight: 700;
+      font-weight: 800;
       letter-spacing: 0;
       text-transform: uppercase;
     }
@@ -124,11 +171,25 @@
     }
 
     .lead-name {
-      font-weight: 700;
+      color: #0f172a;
+      font-weight: 800;
     }
 
-    .muted {
-      color: #68758a;
+    .lead-subtext {
+      margin-top: 4px;
+      color: #64748b;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .message {
+      max-width: 260px;
+      white-space: normal;
+    }
+
+    .response {
+      max-width: 300px;
+      white-space: normal;
     }
 
     .pill {
@@ -138,24 +199,92 @@
       background: #eef4ff;
       color: #244da8;
       font-size: 12px;
-      font-weight: 700;
+      font-weight: 800;
       padding: 4px 9px;
+      white-space: nowrap;
     }
 
-    .message {
-      max-width: 260px;
-      white-space: normal;
+    .status-pill {
+      background: #f1f5f9;
+      color: #334155;
     }
 
-    @media (max-width: 720px) {
+    .status-new {
+      background: #f8fafc;
+      color: #475569;
+    }
+
+    .status-contacted {
+      background: #eff6ff;
+      color: #1d4ed8;
+    }
+
+    .status-qualified {
+      background: #ecfdf3;
+      color: #027a48;
+    }
+
+    .status-needs_handoff {
+      background: #fff7ed;
+      color: #c2410c;
+    }
+
+    .yes {
+      background: #ecfdf3;
+      color: #027a48;
+    }
+
+    .no {
+      background: #f8fafc;
+      color: #64748b;
+    }
+
+    .stack {
+      display: grid;
+      gap: 8px;
+    }
+
+    .empty-state {
+      display: none;
+      border: 1px dashed #cbd5e1;
+      border-radius: 8px;
+      background: #ffffff;
+      color: #64748b;
+      padding: 28px;
+      text-align: center;
+    }
+
+    .empty-state.visible {
+      display: block;
+    }
+
+    .empty-title {
+      margin: 0 0 6px;
+      color: #172033;
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    @media (max-width: 900px) {
+      .stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 680px) {
       .shell {
-        width: min(100% - 20px, 1180px);
+        width: min(100% - 20px, 1320px);
         padding: 22px 0;
       }
 
-      .topbar {
-        align-items: flex-start;
+      .topbar,
+      .actions {
+        align-items: stretch;
         flex-direction: column;
+      }
+
+      .stats {
+        grid-template-columns: 1fr;
       }
 
       button {
@@ -169,25 +298,54 @@
     <div class="topbar">
       <div>
         <h1>Lead Dashboard</h1>
-        <p class="meta" id="leadCount">Recent leads</p>
+        <p class="meta" id="leadCount">Recent leads and AI follow-up status</p>
       </div>
-      <button id="refreshButton" type="button">Refresh</button>
+      <div class="actions">
+        <a class="nav-link" href="/demo">Demo</a>
+        <a class="nav-link" href="/settings">Settings</a>
+        <button id="refreshButton" type="button">Refresh</button>
+      </div>
     </div>
 
-    <div class="status" id="status"></div>
+    <section class="stats" aria-label="Lead summary">
+      <div class="stat-card">
+        <div class="stat-label">Total leads</div>
+        <div class="stat-value" id="totalLeads">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Needs handoff</div>
+        <div class="stat-value" id="needsHandoff">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Qualified</div>
+        <div class="stat-value" id="qualifiedLeads">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Contacted</div>
+        <div class="stat-value" id="contactedLeads">0</div>
+      </div>
+    </section>
 
-    <div class="table-wrap">
+    <div class="status-line" id="status"></div>
+
+    <section class="empty-state" id="emptyState">
+      <p class="empty-title">No leads yet.</p>
+      <div>Submit a lead from the form or demo page to see AI qualification details here.</div>
+    </section>
+
+    <div class="table-wrap" id="tableWrap">
       <table>
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Phone</th>
-            <th>Source</th>
-            <th>Latest Message</th>
-            <th>AI Extraction</th>
-            <th>AI Response</th>
+            <th>Lead</th>
             <th>Status</th>
+            <th>Source</th>
+            <th>Latest message</th>
+            <th>AI intent</th>
+            <th>Wants showing</th>
+            <th>AI confidence</th>
+            <th>AI response</th>
+            <th>Email status</th>
             <th>Created</th>
           </tr>
         </thead>
@@ -201,6 +359,12 @@
     const statusEl = document.getElementById("status");
     const leadCountEl = document.getElementById("leadCount");
     const leadRows = document.getElementById("leadRows");
+    const tableWrap = document.getElementById("tableWrap");
+    const emptyState = document.getElementById("emptyState");
+    const totalLeadsEl = document.getElementById("totalLeads");
+    const needsHandoffEl = document.getElementById("needsHandoff");
+    const qualifiedLeadsEl = document.getElementById("qualifiedLeads");
+    const contactedLeadsEl = document.getElementById("contactedLeads");
 
     function formatDate(value) {
       if (!value) {
@@ -214,7 +378,7 @@
     }
 
     function text(value) {
-      return value === undefined || value === null || value === "" ? "—" : value;
+      return value === undefined || value === null || value === "" ? "-" : value;
     }
 
     function escapeHtml(value) {
@@ -226,30 +390,77 @@
         .replace(/'/g, "&#039;");
     }
 
-    function renderLeads(leads) {
-      leadRows.innerHTML = "";
-      leadCountEl.textContent = `${leads.length} recent lead${leads.length === 1 ? "" : "s"}`;
+    function cleanStatus(value) {
+      const allowed = ["new", "contacted", "qualified", "needs_handoff"];
+      return allowed.includes(value) ? value : "new";
+    }
 
-      if (leads.length === 0) {
-        const emptyRow = document.createElement("tr");
-        emptyRow.innerHTML = '<td colspan="9" class="muted">No leads yet.</td>';
-        leadRows.appendChild(emptyRow);
-        return;
+    function labelStatus(value) {
+      return cleanStatus(value).replace("_", " ");
+    }
+
+    function yesNo(value) {
+      return value ? "Yes" : "No";
+    }
+
+    function formatConfidence(value) {
+      if (value === undefined || value === null || value === "") {
+        return "-";
       }
 
+      const numericValue = Number(value);
+
+      if (!Number.isFinite(numericValue)) {
+        return "-";
+      }
+
+      return `${Math.round(numericValue * 100)}%`;
+    }
+
+    function countByStatus(leads, status) {
+      return leads.filter((lead) => cleanStatus(lead.leadStatus || lead.status) === status).length;
+    }
+
+    function renderStats(leads) {
+      totalLeadsEl.textContent = leads.length;
+      needsHandoffEl.textContent = countByStatus(leads, "needs_handoff");
+      qualifiedLeadsEl.textContent = countByStatus(leads, "qualified");
+      contactedLeadsEl.textContent = countByStatus(leads, "contacted");
+      leadCountEl.textContent = `${leads.length} recent lead${leads.length === 1 ? "" : "s"}`;
+    }
+
+    function renderEmptyState(leads) {
+      const hasLeads = leads.length > 0;
+      emptyState.classList.toggle("visible", !hasLeads);
+      tableWrap.style.display = hasLeads ? "block" : "none";
+    }
+
+    function renderLeads(leads) {
+      leadRows.innerHTML = "";
+      renderStats(leads);
+      renderEmptyState(leads);
+
       leads.forEach((lead) => {
+        const leadStatus = cleanStatus(lead.leadStatus || lead.status);
         const row = document.createElement("tr");
         row.innerHTML = `
-          <td><div class="lead-name">${escapeHtml(lead.name)}</div></td>
-          <td>${escapeHtml(lead.email)}</td>
-          <td>${escapeHtml(lead.phone)}</td>
+          <td>
+            <div class="lead-name">${escapeHtml(lead.name)}</div>
+            <div class="lead-subtext">${escapeHtml(lead.email)}</div>
+            <div class="lead-subtext">${escapeHtml(lead.phone)}</div>
+          </td>
+          <td><span class="pill status-pill status-${leadStatus}">${escapeHtml(labelStatus(leadStatus))}</span></td>
           <td><span class="pill">${escapeHtml(lead.source)}</span></td>
           <td class="message">${escapeHtml(lead.latestMessage)}</td>
-          <td class="message">${escapeHtml(lead.aiExtractionSummary)}</td>
-          <td class="message">${escapeHtml(lead.aiResponse)}</td>
+          <td>${escapeHtml(lead.aiIntent)}</td>
+          <td><span class="pill ${lead.wantsShowing ? "yes" : "no"}">${yesNo(lead.wantsShowing)}</span></td>
+          <td>${escapeHtml(formatConfidence(lead.aiConfidence))}</td>
+          <td class="response">${escapeHtml(lead.aiResponse)}</td>
           <td>
-            <div>${escapeHtml(lead.conversationStatus)}</div>
-            <div class="muted">${lead.messageCount || 0} messages</div>
+            <div class="stack">
+              <span class="pill ${lead.emailSent ? "yes" : "no"}">Customer: ${yesNo(lead.emailSent)}</span>
+              <span class="pill ${lead.agentNotificationSent ? "yes" : "no"}">Agent: ${yesNo(lead.agentNotificationSent)}</span>
+            </div>
           </td>
           <td>${formatDate(lead.createdAt)}</td>
         `;
@@ -260,7 +471,7 @@
     async function loadLeads() {
       refreshButton.disabled = true;
       refreshButton.textContent = "Refreshing...";
-      statusEl.className = "status";
+      statusEl.className = "status-line";
       statusEl.textContent = "Loading leads...";
 
       try {
@@ -271,10 +482,11 @@
         }
 
         const data = await response.json();
-        renderLeads(data.leads || []);
+        const leads = data.leads || [];
+        renderLeads(leads);
         statusEl.textContent = `Updated ${formatDate(new Date().toISOString())}`;
       } catch (error) {
-        statusEl.className = "status error";
+        statusEl.className = "status-line error";
         statusEl.textContent = "Could not load leads.";
       } finally {
         refreshButton.disabled = false;
