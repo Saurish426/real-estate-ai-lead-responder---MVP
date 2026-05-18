@@ -1,4 +1,4 @@
-function buildAiSummary({ previousSummary, incomingMessage, aiExtraction, aiResponse }) {
+function buildAiSummary({ previousSummary, incomingMessage, aiExtraction, aiResponse, bookingFlow }) {
   const summaryParts = [];
 
   if (previousSummary) {
@@ -23,7 +23,29 @@ function buildAiSummary({ previousSummary, incomingMessage, aiExtraction, aiResp
     summaryParts.push(`Latest AI response: ${aiResponse}`);
   }
 
+  if (bookingFlow && bookingFlow.bookingRequested) {
+    summaryParts.push(
+      [
+        `Booking status: ${bookingFlow.bookingStatus}`,
+        `Booking requested: ${bookingFlow.bookingRequested}`,
+        `Booking link sent: ${bookingFlow.bookingLinkSent}`
+      ].join("; ")
+    );
+  }
+
   return summaryParts.join("\n").slice(-4000);
+}
+
+function resolveConversationStatus({ aiResponse, bookingFlow }) {
+  if (bookingFlow && bookingFlow.bookingStatus === "booked") {
+    return "booked";
+  }
+
+  if (bookingFlow && bookingFlow.bookingRequested) {
+    return "showing_requested";
+  }
+
+  return aiResponse ? "ai_generated" : "lead_received";
 }
 
 async function findExistingLeadByEmail(prisma, email) {
@@ -80,21 +102,28 @@ async function findConversationForLead(prisma, leadId) {
   });
 }
 
-async function updateConversationMemory(prisma, { lead, incomingMessage, aiExtraction, aiResponse, existingConversation }) {
+async function updateConversationMemory(prisma, { lead, incomingMessage, aiExtraction, aiResponse, existingConversation, bookingFlow }) {
   const conversation = existingConversation || (await findConversationForLead(prisma, lead.id));
   const messageCount = (conversation && conversation.messageCount ? conversation.messageCount : 0) + 1;
   const aiSummary = buildAiSummary({
     previousSummary: conversation && conversation.aiSummary,
     incomingMessage,
     aiExtraction,
-    aiResponse
+    aiResponse,
+    bookingFlow
   });
   const data = {
     leadId: lead.id,
     lastMessage: aiResponse || incomingMessage,
-    status: aiResponse ? "ai_generated" : "lead_received",
+    status: resolveConversationStatus({
+      aiResponse,
+      bookingFlow
+    }),
     messageCount,
-    aiSummary
+    aiSummary,
+    bookingStatus: bookingFlow ? bookingFlow.bookingStatus : "none",
+    bookingRequested: bookingFlow ? bookingFlow.bookingRequested : false,
+    bookingLinkSent: bookingFlow ? bookingFlow.bookingLinkSent : false
   };
 
   if (!conversation) {

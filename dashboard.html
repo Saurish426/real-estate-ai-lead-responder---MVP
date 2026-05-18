@@ -88,7 +88,7 @@
 
     .stats {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(5, minmax(0, 1fr));
       gap: 14px;
       margin-bottom: 18px;
     }
@@ -139,7 +139,7 @@
 
     table {
       width: 100%;
-      min-width: 1260px;
+      min-width: 1420px;
       border-collapse: collapse;
     }
 
@@ -224,6 +224,16 @@
     }
 
     .status-qualified {
+      background: #ecfdf3;
+      color: #027a48;
+    }
+
+    .status-showing_requested {
+      background: #fff7ed;
+      color: #c2410c;
+    }
+
+    .status-booked {
       background: #ecfdf3;
       color: #027a48;
     }
@@ -342,16 +352,20 @@
         <div class="stat-value" id="totalLeads">0</div>
       </div>
       <div class="stat-card">
+        <div class="stat-label">Showing requested</div>
+        <div class="stat-value" id="showingRequested">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Booked</div>
+        <div class="stat-value" id="bookedLeads">0</div>
+      </div>
+      <div class="stat-card">
         <div class="stat-label">Needs handoff</div>
         <div class="stat-value" id="needsHandoff">0</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Qualified</div>
         <div class="stat-value" id="qualifiedLeads">0</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Contacted</div>
-        <div class="stat-value" id="contactedLeads">0</div>
       </div>
     </section>
 
@@ -373,6 +387,7 @@
             <th>AI intent</th>
             <th>Wants showing</th>
             <th>AI confidence</th>
+            <th>Booking</th>
             <th>AI response</th>
             <th>Email status</th>
             <th>Created</th>
@@ -417,9 +432,10 @@
     const tableWrap = document.getElementById("tableWrap");
     const emptyState = document.getElementById("emptyState");
     const totalLeadsEl = document.getElementById("totalLeads");
+    const showingRequestedEl = document.getElementById("showingRequested");
+    const bookedLeadsEl = document.getElementById("bookedLeads");
     const needsHandoffEl = document.getElementById("needsHandoff");
     const qualifiedLeadsEl = document.getElementById("qualifiedLeads");
-    const contactedLeadsEl = document.getElementById("contactedLeads");
     const eventRows = document.getElementById("eventRows");
     const eventsTableWrap = document.getElementById("eventsTableWrap");
     const eventsEmptyState = document.getElementById("eventsEmptyState");
@@ -450,12 +466,12 @@
     }
 
     function cleanStatus(value) {
-      const allowed = ["new", "contacted", "qualified", "needs_handoff"];
+      const allowed = ["new", "contacted", "qualified", "showing_requested", "booked", "needs_handoff"];
       return allowed.includes(value) ? value : "new";
     }
 
     function labelStatus(value) {
-      return cleanStatus(value).replace("_", " ");
+      return cleanStatus(value).replace(/_/g, " ");
     }
 
     function yesNo(value) {
@@ -482,9 +498,10 @@
 
     function renderStats(leads) {
       totalLeadsEl.textContent = leads.length;
+      showingRequestedEl.textContent = countByStatus(leads, "showing_requested");
+      bookedLeadsEl.textContent = countByStatus(leads, "booked");
       needsHandoffEl.textContent = countByStatus(leads, "needs_handoff");
       qualifiedLeadsEl.textContent = countByStatus(leads, "qualified");
-      contactedLeadsEl.textContent = countByStatus(leads, "contacted");
       leadCountEl.textContent = `${leads.length} recent lead${leads.length === 1 ? "" : "s"}`;
     }
 
@@ -514,6 +531,13 @@
           <td>${escapeHtml(lead.aiIntent)}</td>
           <td><span class="pill ${lead.wantsShowing ? "yes" : "no"}">${yesNo(lead.wantsShowing)}</span></td>
           <td>${escapeHtml(formatConfidence(lead.aiConfidence))}</td>
+          <td>
+            <div class="stack">
+              <span class="pill status-pill">${escapeHtml(lead.bookingStatus || "none")}</span>
+              <span class="pill ${lead.bookingRequested ? "yes" : "no"}">Requested: ${yesNo(lead.bookingRequested)}</span>
+              <span class="pill ${lead.bookingLinkSent ? "yes" : "no"}">Link: ${yesNo(lead.bookingLinkSent)}</span>
+            </div>
+          </td>
           <td class="response">${escapeHtml(lead.aiResponse)}</td>
           <td>
             <div class="stack">

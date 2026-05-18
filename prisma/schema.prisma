@@ -31,12 +31,15 @@ model Lead {
 
 // A conversation stores the latest message and status for a lead follow-up.
 model Conversation {
-  id           Int     @id @default(autoincrement())
-  leadId       Int
-  lastMessage  String
-  status       String
-  messageCount Int     @default(0)
-  aiSummary    String?
+  id               Int     @id @default(autoincrement())
+  leadId           Int
+  lastMessage      String
+  status           String
+  messageCount     Int     @default(0)
+  aiSummary        String?
+  bookingStatus    String  @default("none")
+  bookingRequested Boolean @default(false)
+  bookingLinkSent  Boolean @default(false)
 
   @@index([leadId])
 }

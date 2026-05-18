@@ -2,6 +2,7 @@ const { getPrismaClient } = require("../db");
 const { extractLeadDetails } = require("../services/aiExtractionService");
 const { applyAiResponseGuardrails } = require("../services/aiResponseGuardrailService");
 const { generateLeadResponse } = require("../services/aiResponseService");
+const { applyBookingFlow } = require("../services/bookingFlowService");
 const {
   findConversationForLead,
   saveLeadForSubmission,
@@ -37,12 +38,20 @@ function getLeadStatus({ aiExtraction, emailSent, agentNotificationSent, convers
   const intent = aiExtraction && aiExtraction.intent ? aiExtraction.intent : "unknown";
   const confidence = getAiConfidence(aiExtraction);
 
-  if (aiExtraction && aiExtraction.wants_showing === true) {
-    return "needs_handoff";
+  if (conversation && conversation.status === "booked") {
+    return "booked";
+  }
+
+  if (conversation && (conversation.status === "showing_requested" || conversation.bookingRequested === true)) {
+    return "showing_requested";
   }
 
   if ((intent === "buyer" || intent === "seller" || intent === "showing_request") && confidence !== null && confidence >= 0.5) {
     return "qualified";
+  }
+
+  if (aiExtraction && aiExtraction.wants_showing === true) {
+    return "needs_handoff";
   }
 
   if (emailSent || agentNotificationSent || conversation) {
@@ -110,6 +119,9 @@ async function listLeads(req, res) {
           aiResponse,
           emailSent,
           agentNotificationSent,
+          bookingStatus: conversation ? conversation.bookingStatus || "none" : "none",
+          bookingRequested: conversation ? conversation.bookingRequested === true : false,
+          bookingLinkSent: conversation ? conversation.bookingLinkSent === true : false,
           conversationStatus: conversation ? conversation.status : "none",
           messageCount: conversation ? conversation.messageCount : 0,
           aiSummary: conversation ? conversation.aiSummary : null,
@@ -224,6 +236,7 @@ async function createLead(req, res) {
 
     let aiResponse = null;
     let aiResponseGuardrail = null;
+    let bookingFlow = null;
     let conversation = null;
     let agentSettings = null;
 
@@ -286,6 +299,13 @@ async function createLead(req, res) {
             }
           });
         }
+
+        bookingFlow = applyBookingFlow(aiResponse, {
+          lead: savedLead,
+          aiExtraction,
+          agentSettings
+        });
+        aiResponse = bookingFlow.response;
       }
     } catch (responseError) {
       console.error("Lead was saved, but AI response generation failed:", {
@@ -311,7 +331,8 @@ async function createLead(req, res) {
         incomingMessage: lead.message,
         aiExtraction,
         aiResponse,
-        existingConversation
+        existingConversation,
+        bookingFlow
       });
 
       console.log(`Conversation memory saved for lead ${savedLead.id}.`);
@@ -418,6 +439,7 @@ async function createLead(req, res) {
       aiExtraction,
       aiResponse,
       aiResponseGuardrail,
+      bookingFlow,
       conversation,
       isExistingLead,
       emailSent,

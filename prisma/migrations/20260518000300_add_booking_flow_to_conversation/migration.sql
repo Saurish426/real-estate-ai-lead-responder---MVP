@@ -1,0 +1,3 @@
+ALTER TABLE "Conversation" ADD COLUMN IF NOT EXISTS "bookingStatus" TEXT NOT NULL DEFAULT 'none';
+ALTER TABLE "Conversation" ADD COLUMN IF NOT EXISTS "bookingRequested" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "Conversation" ADD COLUMN IF NOT EXISTS "bookingLinkSent" BOOLEAN NOT NULL DEFAULT false;
