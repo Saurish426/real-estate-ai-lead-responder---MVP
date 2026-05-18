@@ -13,9 +13,24 @@ model User {
   email String @unique
 }
 
+// An agent owns leads, conversations, and settings. Auth can be added later.
+model Agent {
+  id           Int            @id @default(autoincrement())
+  name         String
+  email        String         @default("")
+  phone        String         @default("")
+  businessName String         @default("Real Estate Team")
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  leads        Lead[]
+  conversations Conversation[]
+  settings     AgentSettings?
+}
+
 // A lead is a potential real estate client who contacts the business.
 model Lead {
   id        Int      @id @default(autoincrement())
+  agentId   Int      @default(1)
   name      String
   email     String
   phone     String
@@ -25,13 +40,16 @@ model Lead {
   emailSent Boolean @default(false)
   agentNotificationSent Boolean @default(false)
   createdAt DateTime @default(now())
+  agent     Agent    @relation(fields: [agentId], references: [id])
 
   @@index([email])
+  @@index([agentId])
 }
 
 // A conversation stores the latest message and status for a lead follow-up.
 model Conversation {
   id               Int     @id @default(autoincrement())
+  agentId          Int     @default(1)
   leadId           Int
   lastMessage      String
   status           String
@@ -40,8 +58,10 @@ model Conversation {
   bookingStatus    String  @default("none")
   bookingRequested Boolean @default(false)
   bookingLinkSent  Boolean @default(false)
+  agent            Agent   @relation(fields: [agentId], references: [id])
 
   @@index([leadId])
+  @@index([agentId])
 }
 
 // A booking stores an appointment time and status for a lead.
@@ -55,6 +75,7 @@ model Booking {
 // AgentSettings stores the simple business profile used by the AI reply writer.
 model AgentSettings {
   id                 Int      @id
+  agentId            Int      @unique @default(1)
   agentName          String   @default("AI Lead Responder")
   agentEmail         String   @default("")
   agentPhone         String   @default("")
@@ -63,18 +84,21 @@ model AgentSettings {
   preferredReplyTone String   @default("friendly and professional")
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+  agent              Agent    @relation(fields: [agentId], references: [id])
 }
 
 // EventLog stores non-secret operational events for lead tracking and debugging.
 model EventLog {
   id        Int      @id @default(autoincrement())
   eventType String
+  agentId   Int?
   leadId    Int?
   message   String
   metadata  Json?
   createdAt DateTime @default(now())
 
   @@index([eventType])
+  @@index([agentId])
   @@index([leadId])
   @@index([createdAt])
 }

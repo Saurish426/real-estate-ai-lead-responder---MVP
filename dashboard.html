@@ -54,6 +54,31 @@
       gap: 12px;
     }
 
+    .agent-filter {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .agent-filter label {
+      color: #475569;
+      font-size: 13px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .agent-filter select {
+      min-width: 180px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: #ffffff;
+      color: #172033;
+      font: inherit;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 10px 12px;
+    }
+
     .nav-link {
       color: #334155;
       font-size: 14px;
@@ -322,6 +347,11 @@
         flex-direction: column;
       }
 
+      .agent-filter {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
       .stats {
         grid-template-columns: 1fr;
       }
@@ -342,6 +372,10 @@
       <div class="actions">
         <a class="nav-link" href="/demo">Demo</a>
         <a class="nav-link" href="/settings">Settings</a>
+        <div class="agent-filter">
+          <label for="agentSelect">Agent</label>
+          <select id="agentSelect"></select>
+        </div>
         <button id="refreshButton" type="button">Refresh</button>
       </div>
     </div>
@@ -426,6 +460,7 @@
 
   <script>
     const refreshButton = document.getElementById("refreshButton");
+    const agentSelect = document.getElementById("agentSelect");
     const statusEl = document.getElementById("status");
     const leadCountEl = document.getElementById("leadCount");
     const leadRows = document.getElementById("leadRows");
@@ -494,6 +529,56 @@
 
     function countByStatus(leads, status) {
       return leads.filter((lead) => cleanStatus(lead.leadStatus || lead.status) === status).length;
+    }
+
+    function getAgentIdFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("agentId") || "1";
+    }
+
+    function getSelectedAgentId() {
+      return agentSelect.value || getAgentIdFromUrl();
+    }
+
+    function buildAgentUrl(path) {
+      const params = new URLSearchParams({
+        agentId: getSelectedAgentId()
+      });
+
+      return `${path}?${params.toString()}`;
+    }
+
+    function updateAgentUrl() {
+      const url = new URL(window.location.href);
+      url.searchParams.set("agentId", getSelectedAgentId());
+      window.history.replaceState({}, "", url);
+    }
+
+    function renderAgents(agents) {
+      agentSelect.innerHTML = "";
+
+      agents.forEach((agent) => {
+        const option = document.createElement("option");
+        option.value = String(agent.id);
+        option.textContent = agent.businessName ? `${agent.name} - ${agent.businessName}` : agent.name;
+        agentSelect.appendChild(option);
+      });
+
+      const requestedAgentId = getAgentIdFromUrl();
+      const hasRequestedAgent = agents.some((agent) => String(agent.id) === requestedAgentId);
+      agentSelect.value = hasRequestedAgent ? requestedAgentId : "1";
+      updateAgentUrl();
+    }
+
+    async function loadAgents() {
+      const response = await fetch("/api/agents");
+
+      if (!response.ok) {
+        throw new Error("Agent request failed");
+      }
+
+      const data = await response.json();
+      renderAgents(data.agents || []);
     }
 
     function renderStats(leads) {
@@ -577,8 +662,8 @@
 
       try {
         const [leadsResponse, eventsResponse] = await Promise.all([
-          fetch("/api/leads"),
-          fetch("/api/events")
+          fetch(buildAgentUrl("/api/leads")),
+          fetch(buildAgentUrl("/api/events"))
         ]);
 
         if (!leadsResponse.ok || !eventsResponse.ok) {
@@ -602,7 +687,17 @@
     }
 
     refreshButton.addEventListener("click", loadLeads);
-    loadLeads();
+    agentSelect.addEventListener("change", () => {
+      updateAgentUrl();
+      loadLeads();
+    });
+
+    loadAgents()
+      .then(loadLeads)
+      .catch(() => {
+        statusEl.className = "status-line error";
+        statusEl.textContent = "Could not load agents.";
+      });
   </script>
 </body>
 </html>

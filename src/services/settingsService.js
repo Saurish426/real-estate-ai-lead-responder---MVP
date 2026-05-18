@@ -1,3 +1,5 @@
+const { DEFAULT_AGENT_ID } = require("./agentService");
+
 const SETTINGS_ID = 1;
 
 const DEFAULT_AGENT_SETTINGS = {
@@ -15,7 +17,8 @@ function cleanSetting(value) {
 
 function withSafeDefaults(settings = {}) {
   return {
-    id: settings.id || SETTINGS_ID,
+    id: settings.id || settings.agentId || SETTINGS_ID,
+    agentId: settings.agentId || DEFAULT_AGENT_ID,
     agentName: cleanSetting(settings.agentName) || DEFAULT_AGENT_SETTINGS.agentName,
     agentEmail: cleanSetting(settings.agentEmail) || DEFAULT_AGENT_SETTINGS.agentEmail,
     agentPhone: cleanSetting(settings.agentPhone) || DEFAULT_AGENT_SETTINGS.agentPhone,
@@ -40,25 +43,26 @@ function normalizeSettingsInput(input = {}) {
   };
 }
 
-async function getAgentSettings(prisma) {
+async function getAgentSettings(prisma, agentId = DEFAULT_AGENT_ID) {
   const settings = await prisma.agentSettings.findUnique({
     where: {
-      id: SETTINGS_ID
+      agentId
     }
   });
 
-  return withSafeDefaults(settings || {});
+  return withSafeDefaults(settings || { agentId });
 }
 
-async function saveAgentSettings(prisma, input) {
+async function saveAgentSettings(prisma, input, agentId = DEFAULT_AGENT_ID) {
   const data = normalizeSettingsInput(input);
   const settings = await prisma.agentSettings.upsert({
     where: {
-      id: SETTINGS_ID
+      agentId
     },
     update: data,
     create: {
-      id: SETTINGS_ID,
+      id: agentId,
+      agentId,
       ...data
     }
   });

@@ -1,4 +1,5 @@
 const { getPrismaClient } = require("../db");
+const { getAgentIdFromRequest, getAgentOrDefault } = require("../services/agentService");
 const { extractLeadDetails } = require("../services/aiExtractionService");
 const { applyAiResponseGuardrails } = require("../services/aiResponseGuardrailService");
 const { generateLeadResponse } = require("../services/aiResponseService");
@@ -64,7 +65,11 @@ function getLeadStatus({ aiExtraction, emailSent, agentNotificationSent, convers
 async function listLeads(req, res) {
   try {
     const prisma = getPrismaClient();
+    const agent = await getAgentOrDefault(prisma, getAgentIdFromRequest(req));
     const leads = await prisma.lead.findMany({
+      where: {
+        agentId: agent.id
+      },
       orderBy: {
         createdAt: "desc"
       },
@@ -72,6 +77,7 @@ async function listLeads(req, res) {
     });
     const conversations = await prisma.conversation.findMany({
       where: {
+        agentId: agent.id,
         leadId: {
           in: leads.map((lead) => lead.id)
         }
@@ -89,9 +95,10 @@ async function listLeads(req, res) {
     });
 
     return res.json({
+      agent,
       leads: leads.map((lead) => {
         const conversation = conversationByLeadId.get(lead.id) || null;
-        const aiResponse = conversation && conversation.status === "ai_generated" ? conversation.lastMessage : null;
+        const aiResponse = conversation ? conversation.lastMessage : null;
         const aiConfidence = getAiConfidence(lead.aiExtraction);
         const emailSent = lead.emailSent === true;
         const agentNotificationSent = lead.agentNotificationSent === true;
@@ -104,6 +111,7 @@ async function listLeads(req, res) {
 
         return {
           id: lead.id,
+          agentId: lead.agentId,
           name: lead.name,
           email: lead.email,
           phone: lead.phone,
@@ -163,13 +171,19 @@ async function createLead(req, res) {
 
   try {
     const prisma = getPrismaClient();
+    const agent = await getAgentOrDefault(prisma, getAgentIdFromRequest(req));
+    const leadForAgent = {
+      ...lead,
+      agentId: agent.id
+    };
 
     // Save a new lead, or update the existing lead when the same email returns.
-    let { savedLead, isExistingLead } = await saveLeadForSubmission(prisma, lead);
+    let { savedLead, isExistingLead } = await saveLeadForSubmission(prisma, leadForAgent);
     let existingConversation = null;
 
     await logEvent(prisma, {
       eventType: "lead_created",
+      agentId: savedLead.agentId,
       leadId: savedLead.id,
       message: isExistingLead ? "Existing lead updated from new submission." : "New lead created.",
       metadata: {
@@ -179,7 +193,7 @@ async function createLead(req, res) {
     });
 
     try {
-      existingConversation = await findConversationForLead(prisma, savedLead.id);
+      existingConversation = await findConversationForLead(prisma, savedLead.id, savedLead.agentId);
     } catch (memoryLookupError) {
       console.error("Lead was saved, but conversation lookup failed:", {
         leadId: savedLead.id,
@@ -207,6 +221,7 @@ async function createLead(req, res) {
 
         await logEvent(prisma, {
           eventType: "ai_extraction_success",
+          agentId: savedLead.agentId,
           leadId: savedLead.id,
           message: "AI extraction completed.",
           metadata: {
@@ -225,6 +240,7 @@ async function createLead(req, res) {
 
       await logEvent(prisma, {
         eventType: "ai_extraction_failed",
+        agentId: savedLead.agentId,
         leadId: savedLead.id,
         message: "AI extraction failed.",
         metadata: {
@@ -241,7 +257,7 @@ async function createLead(req, res) {
     let agentSettings = null;
 
     try {
-      agentSettings = await getAgentSettings(prisma);
+      agentSettings = await getAgentSettings(prisma, savedLead.agentId);
     } catch (settingsError) {
       console.error("Lead was saved, but agent settings lookup failed. Safe defaults will be used:", {
         leadId: savedLead.id,
@@ -256,6 +272,7 @@ async function createLead(req, res) {
       if (!aiResponse) {
         await logEvent(prisma, {
           eventType: "ai_response_failed",
+          agentId: savedLead.agentId,
           leadId: savedLead.id,
           message: "AI response generation returned no response.",
           metadata: {
@@ -265,6 +282,7 @@ async function createLead(req, res) {
       } else {
         await logEvent(prisma, {
           eventType: "ai_response_generated",
+          agentId: savedLead.agentId,
           leadId: savedLead.id,
           message: "AI response generated.",
           metadata: {
@@ -283,6 +301,7 @@ async function createLead(req, res) {
 
           await logEvent(prisma, {
             eventType: "guardrail_blocked",
+            agentId: savedLead.agentId,
             leadId: savedLead.id,
             message: "AI response blocked and replaced with safe fallback.",
             metadata: {
@@ -292,6 +311,7 @@ async function createLead(req, res) {
         } else {
           await logEvent(prisma, {
             eventType: "guardrail_passed",
+            agentId: savedLead.agentId,
             leadId: savedLead.id,
             message: "AI response passed guardrail checks.",
             metadata: {
@@ -316,6 +336,7 @@ async function createLead(req, res) {
 
       await logEvent(prisma, {
         eventType: "ai_response_failed",
+        agentId: savedLead.agentId,
         leadId: savedLead.id,
         message: "AI response generation failed.",
         metadata: {
@@ -353,6 +374,7 @@ async function createLead(req, res) {
 
       await logEvent(prisma, {
         eventType: "email_auto_reply_sent",
+        agentId: savedLead.agentId,
         leadId: savedLead.id,
         message: "Customer auto-reply email sent.",
         metadata: {
@@ -368,6 +390,7 @@ async function createLead(req, res) {
 
       await logEvent(prisma, {
         eventType: "email_auto_reply_failed",
+        agentId: savedLead.agentId,
         leadId: savedLead.id,
         message: "Customer auto-reply email failed.",
         metadata: {
@@ -392,6 +415,7 @@ async function createLead(req, res) {
 
       await logEvent(prisma, {
         eventType: "agent_notification_sent",
+        agentId: savedLead.agentId,
         leadId: savedLead.id,
         message: "Agent notification email sent.",
         metadata: {
@@ -407,6 +431,7 @@ async function createLead(req, res) {
 
       await logEvent(prisma, {
         eventType: "agent_notification_failed",
+        agentId: savedLead.agentId,
         leadId: savedLead.id,
         message: "Agent notification email failed.",
         metadata: {
@@ -436,6 +461,7 @@ async function createLead(req, res) {
 
     return res.status(201).json({
       lead: savedLead,
+      agent,
       aiExtraction,
       aiResponse,
       aiResponseGuardrail,

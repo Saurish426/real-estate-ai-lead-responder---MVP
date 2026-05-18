@@ -1,12 +1,17 @@
 const { getPrismaClient } = require("../db");
+const { getAgentIdFromRequest, getAgentOrDefault } = require("../services/agentService");
 const { listRecentEvents } = require("../services/eventLogService");
 
 async function listEvents(req, res) {
   try {
     const prisma = getPrismaClient();
-    const events = await listRecentEvents(prisma);
+    const agent = await getAgentOrDefault(prisma, getAgentIdFromRequest(req));
+    const events = await listRecentEvents(prisma, {
+      agentId: agent.id
+    });
 
     return res.json({
+      agent,
       events
     });
   } catch (error) {

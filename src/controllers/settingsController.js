@@ -1,12 +1,15 @@
 const { getPrismaClient } = require("../db");
+const { getAgentIdFromRequest, getAgentOrDefault } = require("../services/agentService");
 const { getAgentSettings, saveAgentSettings } = require("../services/settingsService");
 
 async function getSettings(req, res) {
   try {
     const prisma = getPrismaClient();
-    const settings = await getAgentSettings(prisma);
+    const agent = await getAgentOrDefault(prisma, getAgentIdFromRequest(req));
+    const settings = await getAgentSettings(prisma, agent.id);
 
     return res.json({
+      agent,
       settings
     });
   } catch (error) {
@@ -25,9 +28,11 @@ async function getSettings(req, res) {
 async function updateSettings(req, res) {
   try {
     const prisma = getPrismaClient();
-    const settings = await saveAgentSettings(prisma, req.body);
+    const agent = await getAgentOrDefault(prisma, getAgentIdFromRequest(req));
+    const settings = await saveAgentSettings(prisma, req.body, agent.id);
 
     return res.json({
+      agent,
       settings
     });
   } catch (error) {

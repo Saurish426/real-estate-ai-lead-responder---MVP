@@ -48,10 +48,11 @@ function resolveConversationStatus({ aiResponse, bookingFlow }) {
   return aiResponse ? "ai_generated" : "lead_received";
 }
 
-async function findExistingLeadByEmail(prisma, email) {
+async function findExistingLeadByEmail(prisma, email, agentId = 1) {
   return prisma.lead.findFirst({
     where: {
-      email
+      email,
+      agentId
     },
     orderBy: {
       createdAt: "asc"
@@ -60,7 +61,7 @@ async function findExistingLeadByEmail(prisma, email) {
 }
 
 async function saveLeadForSubmission(prisma, lead) {
-  const existingLead = await findExistingLeadByEmail(prisma, lead.email);
+  const existingLead = await findExistingLeadByEmail(prisma, lead.email, lead.agentId);
 
   if (!existingLead) {
     const savedLead = await prisma.lead.create({
@@ -91,10 +92,11 @@ async function saveLeadForSubmission(prisma, lead) {
   };
 }
 
-async function findConversationForLead(prisma, leadId) {
+async function findConversationForLead(prisma, leadId, agentId = 1) {
   return prisma.conversation.findFirst({
     where: {
-      leadId
+      leadId,
+      agentId
     },
     orderBy: {
       id: "desc"
@@ -103,7 +105,7 @@ async function findConversationForLead(prisma, leadId) {
 }
 
 async function updateConversationMemory(prisma, { lead, incomingMessage, aiExtraction, aiResponse, existingConversation, bookingFlow }) {
-  const conversation = existingConversation || (await findConversationForLead(prisma, lead.id));
+  const conversation = existingConversation || (await findConversationForLead(prisma, lead.id, lead.agentId));
   const messageCount = (conversation && conversation.messageCount ? conversation.messageCount : 0) + 1;
   const aiSummary = buildAiSummary({
     previousSummary: conversation && conversation.aiSummary,
@@ -113,6 +115,7 @@ async function updateConversationMemory(prisma, { lead, incomingMessage, aiExtra
     bookingFlow
   });
   const data = {
+    agentId: lead.agentId || 1,
     leadId: lead.id,
     lastMessage: aiResponse || incomingMessage,
     status: resolveConversationStatus({
