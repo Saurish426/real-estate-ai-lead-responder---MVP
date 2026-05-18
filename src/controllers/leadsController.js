@@ -6,7 +6,7 @@ const {
   saveLeadForSubmission,
   updateConversationMemory
 } = require("../services/conversationMemoryService");
-const { sendLeadReplyEmail } = require("../services/emailService");
+const { sendAgentLeadNotificationEmail, sendLeadReplyEmail } = require("../services/emailService");
 const { getAgentSettings } = require("../services/settingsService");
 const { normalizeLead } = require("../utils/normalizeLead");
 
@@ -205,13 +205,34 @@ async function createLead(req, res) {
       });
     }
 
+    let agentNotificationSent = false;
+
+    try {
+      await sendAgentLeadNotificationEmail({
+        lead: savedLead,
+        aiExtraction,
+        aiResponse,
+        conversation,
+        agentSettings
+      });
+      agentNotificationSent = true;
+      console.log(`Agent notification email sent for lead ${savedLead.id}.`);
+    } catch (notificationError) {
+      console.error("Lead was saved, but agent notification failed:", {
+        leadId: savedLead.id,
+        message: notificationError.message,
+        code: notificationError.code
+      });
+    }
+
     return res.status(201).json({
       lead: savedLead,
       aiExtraction,
       aiResponse,
       conversation,
       isExistingLead,
-      emailSent
+      emailSent,
+      agentNotificationSent
     });
   } catch (error) {
     console.error("Error creating lead:", {
