@@ -72,7 +72,7 @@ async function generateLeadResponse(lead, aiExtraction, conversationMemory, agen
         {
           role: "system",
           content:
-            "Write a short, professional real estate lead reply. Use the saved agent and business settings when they are provided. Use the preferred tone, acknowledge the inquiry, and include one clear call to action. If the lead wants a showing and a calendar link is provided, include the calendar link. Keep it to 1 or 2 sentences. Do not invent property details or promise availability."
+            "Write a short, professional real estate lead reply. Use the saved agent and business settings when they are provided. Use the preferred tone, acknowledge the inquiry, and include one clear next question. If the lead wants a showing and a calendar link is provided, include the calendar link, but say bookings are tentative until the agent confirms. Hand off to the agent if unsure. Keep it to 1 or 2 sentences. Do not invent property details, promise availability, confirm a showing, give legal advice, give mortgage or financial advice, use discriminatory or Fair Housing risky language, or pressure the lead aggressively."
         },
         {
           role: "user",

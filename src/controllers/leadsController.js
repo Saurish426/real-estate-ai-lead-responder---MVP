@@ -1,5 +1,6 @@
 const { getPrismaClient } = require("../db");
 const { extractLeadDetails } = require("../services/aiExtractionService");
+const { applyAiResponseGuardrails } = require("../services/aiResponseGuardrailService");
 const { generateLeadResponse } = require("../services/aiResponseService");
 const {
   findConversationForLead,
@@ -190,6 +191,7 @@ async function createLead(req, res) {
     }
 
     let aiResponse = null;
+    let aiResponseGuardrail = null;
     let conversation = null;
     let agentSettings = null;
 
@@ -205,6 +207,15 @@ async function createLead(req, res) {
 
     try {
       aiResponse = await generateLeadResponse(savedLead, aiExtraction, existingConversation, agentSettings);
+      aiResponseGuardrail = applyAiResponseGuardrails(aiResponse);
+      aiResponse = aiResponseGuardrail.response;
+
+      if (aiResponseGuardrail.wasBlocked) {
+        console.warn("AI response was blocked by safety guardrails:", {
+          leadId: savedLead.id,
+          violations: aiResponseGuardrail.violations
+        });
+      }
     } catch (responseError) {
       console.error("Lead was saved, but AI response generation failed:", {
         leadId: savedLead.id,
@@ -287,6 +298,7 @@ async function createLead(req, res) {
       lead: savedLead,
       aiExtraction,
       aiResponse,
+      aiResponseGuardrail,
       conversation,
       isExistingLead,
       emailSent,
