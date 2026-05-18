@@ -141,6 +141,19 @@ Thanks! We will get back to you shortly.
 
 The form posts to `/api/leads`, which works locally and after deployment.
 
+## Techstars Demo Flow
+
+Use this flow for a polished investor or accelerator demo:
+
+1. Submit sample lead from `http://localhost:3000/` or `http://localhost:3000/demo`.
+2. AI extracts intent, showing interest, timeline, budget, and confidence.
+3. AI generates a short professional real estate response.
+4. Customer auto-reply email sends, and the agent notification email sends.
+5. Dashboard updates at `http://localhost:3000/dashboard` with lead status, AI data, email status, and recent events.
+6. Booking workflow appears when the lead asks for a showing, including the saved calendar link when agent settings include one.
+
+Before the demo, open `http://localhost:3000/settings` and save the agent name, business name, reply tone, and calendar link you want the AI to use.
+
 ## Manual Gmail Lead Capture Test
 
 Gmail capture does not run on server startup. To test one email manually, send yourself an unread email with this exact subject:

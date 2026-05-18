@@ -12,69 +12,330 @@
       box-sizing: border-box;
     }
 
+    html {
+      scroll-behavior: smooth;
+    }
+
     body {
       min-height: 100vh;
       margin: 0;
-      font-family: "Inter", Arial, sans-serif;
+      background: #f6f8fb;
       color: #172033;
-      background:
-        linear-gradient(135deg, rgba(239, 246, 255, 0.96), rgba(236, 253, 245, 0.92)),
-        linear-gradient(180deg, #f8fafc, #e0f2fe);
+      font-family: "Inter", Arial, sans-serif;
     }
 
-    .page {
-      min-height: 100vh;
+    a {
+      color: inherit;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      min-height: 620px;
+      background:
+        linear-gradient(90deg, rgba(15, 23, 42, 0.88), rgba(15, 23, 42, 0.54), rgba(15, 23, 42, 0.28)),
+        url("https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1800&q=82") center / cover;
+      color: #ffffff;
+    }
+
+    .hero-shell,
+    .section-shell {
+      width: min(1180px, calc(100% - 36px));
+      margin: 0 auto;
+    }
+
+    .topbar {
       display: flex;
       align-items: center;
-      justify-content: center;
-      padding: 32px 18px;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 24px 0;
     }
 
-    .lead-card {
-      width: 100%;
-      max-width: 460px;
-      padding: 34px;
-      background: #ffffff;
-      border: 1px solid rgba(148, 163, 184, 0.22);
-      border-radius: 8px;
-      box-shadow: 0 24px 70px rgba(15, 23, 42, 0.16);
+    .brand {
+      font-size: 15px;
+      font-weight: 800;
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .nav a {
+      color: rgba(255, 255, 255, 0.86);
+      font-size: 14px;
+      font-weight: 700;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .nav a:hover {
+      color: #ffffff;
+    }
+
+    .hero-content {
+      max-width: 720px;
+      padding: 74px 0 96px;
     }
 
     .eyebrow {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      margin: 0 0 18px;
-      padding: 7px 10px;
-      color: #1d4ed8;
-      background: #eff6ff;
-      border: 1px solid #bfdbfe;
+      border: 1px solid rgba(255, 255, 255, 0.26);
       border-radius: 999px;
-      font-size: 0.78rem;
-      font-weight: 700;
-      letter-spacing: 0;
-    }
-
-    .eyebrow-dot {
-      width: 8px;
-      height: 8px;
-      background: #22c55e;
-      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.12);
+      color: #e0f2fe;
+      font-size: 13px;
+      font-weight: 800;
+      padding: 8px 11px;
     }
 
     h1 {
-      margin: 0;
-      color: #0f172a;
-      font-size: 2.35rem;
-      line-height: 1.05;
-      letter-spacing: 0;
+      max-width: 680px;
+      margin: 22px 0 0;
+      font-size: 62px;
+      line-height: 1.02;
     }
 
-    .subtitle {
-      margin: 12px 0 28px;
+    .value-prop {
+      max-width: 650px;
+      margin: 20px 0 0;
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 20px;
+      line-height: 1.65;
+    }
+
+    .cta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 30px;
+    }
+
+    .button-link,
+    button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 0;
+      border-radius: 8px;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 800;
+      text-decoration: none;
+      transition: background 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+      white-space: nowrap;
+    }
+
+    .button-link.primary,
+    button.primary {
+      background: #2563eb;
+      color: #ffffff;
+      box-shadow: 0 16px 34px rgba(37, 99, 235, 0.32);
+      padding: 14px 18px;
+    }
+
+    .button-link.primary:hover,
+    button.primary:hover {
+      background: #1d4ed8;
+      transform: translateY(-1px);
+    }
+
+    .button-link.secondary {
+      border: 1px solid rgba(255, 255, 255, 0.36);
+      background: rgba(255, 255, 255, 0.12);
+      color: #ffffff;
+      padding: 13px 17px;
+    }
+
+    .button-link.secondary:hover {
+      border-color: rgba(255, 255, 255, 0.68);
+      background: rgba(255, 255, 255, 0.18);
+      transform: translateY(-1px);
+    }
+
+    .metrics-band {
+      margin-top: -56px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .metric-card {
+      border: 1px solid #dbe3ef;
+      border-radius: 8px;
+      background: #ffffff;
+      box-shadow: 0 18px 48px rgba(26, 35, 57, 0.11);
+      padding: 20px;
+    }
+
+    .metric-label {
+      color: #64748b;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .metric-value {
+      margin-top: 10px;
+      color: #0f172a;
+      font-size: 32px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .metric-note {
+      margin-top: 8px;
+      color: #64748b;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .demo-flow {
+      padding: 54px 0 16px;
+    }
+
+    .flow-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .flow-step {
+      border: 1px solid #dbe3ef;
+      border-radius: 8px;
+      background: #ffffff;
+      padding: 20px;
+    }
+
+    .flow-number {
+      color: #2563eb;
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .flow-title {
+      margin-top: 8px;
+      color: #0f172a;
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .flow-copy {
+      margin: 8px 0 0;
+      color: #64748b;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .lead-section {
+      padding: 46px 0 64px;
+    }
+
+    .lead-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 0.82fr) minmax(420px, 1fr);
+      gap: 28px;
+      align-items: start;
+    }
+
+    .section-kicker {
+      color: #2563eb;
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    h2 {
+      max-width: 560px;
+      margin: 10px 0 0;
+      color: #0f172a;
+      font-size: 34px;
+      line-height: 1.12;
+    }
+
+    .section-copy {
+      max-width: 540px;
+      margin: 14px 0 0;
       color: #526173;
-      font-size: 1rem;
-      line-height: 1.6;
+      font-size: 16px;
+      line-height: 1.65;
+    }
+
+    .empty-state {
+      margin-top: 24px;
+      border: 1px dashed #cbd5e1;
+      border-radius: 8px;
+      background: #ffffff;
+      color: #64748b;
+      padding: 18px;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .quick-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 22px;
+    }
+
+    .quick-links a {
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: #ffffff;
+      color: #334155;
+      font-size: 14px;
+      font-weight: 800;
+      padding: 11px 13px;
+      text-decoration: none;
+    }
+
+    .quick-links a:hover {
+      border-color: #2563eb;
+      color: #1d4ed8;
+    }
+
+    .lead-card {
+      width: 100%;
+      padding: 30px;
+      background: #ffffff;
+      border: 1px solid #dbe3ef;
+      border-radius: 8px;
+      box-shadow: 0 24px 60px rgba(26, 35, 57, 0.12);
+    }
+
+    .form-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .form-title {
+      margin: 0;
+      color: #0f172a;
+      font-size: 22px;
+      line-height: 1.25;
+    }
+
+    .form-badge {
+      border-radius: 999px;
+      background: #ecfdf3;
+      color: #027a48;
+      font-size: 12px;
+      font-weight: 800;
+      padding: 6px 10px;
+      white-space: nowrap;
     }
 
     .form-group {
@@ -85,8 +346,8 @@
       display: block;
       margin-bottom: 7px;
       color: #334155;
-      font-size: 0.9rem;
-      font-weight: 700;
+      font-size: 13px;
+      font-weight: 800;
     }
 
     input,
@@ -114,25 +375,10 @@
       resize: vertical;
     }
 
-    button {
+    button.primary {
       width: 100%;
       margin-top: 6px;
       padding: 14px 16px;
-      color: #ffffff;
-      background: #2563eb;
-      border: 0;
-      border-radius: 8px;
-      font: inherit;
-      font-weight: 800;
-      cursor: pointer;
-      box-shadow: 0 12px 24px rgba(37, 99, 235, 0.28);
-      transition: transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
-    }
-
-    button:hover {
-      background: #1d4ed8;
-      box-shadow: 0 16px 30px rgba(37, 99, 235, 0.34);
-      transform: translateY(-1px);
     }
 
     button:disabled {
@@ -145,9 +391,9 @@
     .form-message {
       display: none;
       margin: 18px 0 0;
-      padding: 12px 14px;
+      padding: 13px 14px;
       border-radius: 8px;
-      font-size: 0.92rem;
+      font-size: 14px;
       font-weight: 700;
       line-height: 1.45;
     }
@@ -166,49 +412,203 @@
       border: 1px solid #fecaca;
     }
 
-    @media (max-width: 520px) {
-      .lead-card {
-        padding: 26px;
+    .form-message a {
+      color: inherit;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    @media (max-width: 980px) {
+      h1 {
+        font-size: 48px;
+      }
+
+      .metrics-grid,
+      .flow-grid,
+      .lead-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .metrics-band {
+        margin-top: -34px;
+      }
+    }
+
+    @media (max-width: 680px) {
+      .hero {
+        min-height: auto;
+      }
+
+      .hero-shell,
+      .section-shell {
+        width: min(100% - 22px, 1180px);
+      }
+
+      .topbar,
+      .nav,
+      .form-header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .hero-content {
+        padding: 52px 0 80px;
       }
 
       h1 {
-        font-size: 2rem;
+        font-size: 38px;
+      }
+
+      .value-prop {
+        font-size: 17px;
+      }
+
+      h2 {
+        font-size: 28px;
+      }
+
+      .lead-card {
+        padding: 24px;
+      }
+
+      .cta-row,
+      .quick-links {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .button-link,
+      .quick-links a {
+        width: 100%;
       }
     }
   </style>
 </head>
 <body>
-  <main class="page">
-    <section class="lead-card">
-      <p class="eyebrow"><span class="eyebrow-dot"></span> Real estate demo</p>
-      <h1>AI Lead Responder</h1>
-      <p class="subtitle">Instantly respond to real estate inquiries</p>
+  <main>
+    <section class="hero">
+      <div class="hero-shell">
+        <header class="topbar">
+          <div class="brand">AI Lead Responder</div>
+          <nav class="nav" aria-label="Primary navigation">
+            <a href="#lead-form-section">Lead Form</a>
+            <a href="/demo">Demo</a>
+            <a href="/dashboard">Dashboard</a>
+            <a href="/settings">Settings</a>
+          </nav>
+        </header>
 
-      <form id="lead-form">
-        <div class="form-group">
-          <label for="name">Name</label>
-          <input id="name" name="name" type="text" placeholder="John Smith" required>
+        <div class="hero-content">
+          <div class="eyebrow">Techstars demo ready MVP</div>
+          <h1>AI Lead Responder</h1>
+          <p class="value-prop">AI Lead Responder instantly qualifies, responds to, and converts real estate leads.</p>
+          <div class="cta-row">
+            <a class="button-link primary" href="#lead-form-section">Submit sample lead</a>
+            <a class="button-link secondary" href="/demo">Try guided demo</a>
+            <a class="button-link secondary" href="/dashboard">Open dashboard</a>
+          </div>
         </div>
+      </div>
+    </section>
 
-        <div class="form-group">
-          <label for="email">Email</label>
-          <input id="email" name="email" type="email" placeholder="john@example.com" required>
+    <section class="metrics-band">
+      <div class="section-shell">
+        <div class="metrics-grid" aria-label="Demo metrics">
+          <article class="metric-card">
+            <div class="metric-label">Leads processed</div>
+            <div class="metric-value" id="leadsProcessed">-</div>
+            <div class="metric-note">Recent leads in the active demo database.</div>
+          </article>
+          <article class="metric-card">
+            <div class="metric-label">Response time</div>
+            <div class="metric-value" id="responseTime">Instant</div>
+            <div class="metric-note">Lead intake, AI extraction, and reply happen in one flow.</div>
+          </article>
+          <article class="metric-card">
+            <div class="metric-label">AI qualified leads</div>
+            <div class="metric-value" id="qualifiedLeads">-</div>
+            <div class="metric-note">Buyer, seller, or showing intent detected by AI.</div>
+          </article>
+          <article class="metric-card">
+            <div class="metric-label">Booked showings</div>
+            <div class="metric-value" id="bookedShowings">-</div>
+            <div class="metric-note">Showing workflow surfaced from lead intent.</div>
+          </article>
         </div>
+      </div>
+    </section>
 
-        <div class="form-group">
-          <label for="phone">Phone</label>
-          <input id="phone" name="phone" type="tel" placeholder="1234567890" required>
+    <section class="demo-flow">
+      <div class="section-shell">
+        <div class="flow-grid" aria-label="Demo flow">
+          <article class="flow-step">
+            <div class="flow-number">Step 1</div>
+            <div class="flow-title">Capture the lead</div>
+            <p class="flow-copy">Submit a real estate inquiry from the homepage or guided demo page.</p>
+          </article>
+          <article class="flow-step">
+            <div class="flow-number">Step 2</div>
+            <div class="flow-title">AI qualifies intent</div>
+            <p class="flow-copy">The backend extracts showing intent, timeline, budget, and confidence.</p>
+          </article>
+          <article class="flow-step">
+            <div class="flow-number">Step 3</div>
+            <div class="flow-title">Dashboard updates</div>
+            <p class="flow-copy">Agents see the latest lead, AI response, email status, and booking workflow.</p>
+          </article>
         </div>
+      </div>
+    </section>
 
-        <div class="form-group">
-          <label for="message">Message</label>
-          <textarea id="message" name="message" placeholder="Is this property still available?" required></textarea>
+    <section class="lead-section" id="lead-form-section">
+      <div class="section-shell">
+        <div class="lead-layout">
+          <div>
+            <div class="section-kicker">Live lead capture</div>
+            <h2>Send a lead through the full MVP workflow.</h2>
+            <p class="section-copy">This form connects directly to the Express backend, saves the lead, runs AI extraction and response generation, sends emails, updates conversation memory, and makes the result visible in the dashboard.</p>
+            <div class="empty-state" id="metricsStatus">Metrics load from the dashboard API. If the database is empty, submit this sample lead and refresh the dashboard.</div>
+            <div class="quick-links">
+              <a href="/demo">Guided Demo</a>
+              <a href="/dashboard">View Dashboard</a>
+              <a href="/settings">Agent Settings</a>
+            </div>
+          </div>
+
+          <section class="lead-card">
+            <div class="form-header">
+              <h2 class="form-title">Real Estate Inquiry</h2>
+              <span class="form-badge">Connected</span>
+            </div>
+
+            <form id="lead-form">
+              <div class="form-group">
+                <label for="name">Name</label>
+                <input id="name" name="name" type="text" placeholder="John Smith" required>
+              </div>
+
+              <div class="form-group">
+                <label for="email">Email</label>
+                <input id="email" name="email" type="email" placeholder="john@example.com" required>
+              </div>
+
+              <div class="form-group">
+                <label for="phone">Phone</label>
+                <input id="phone" name="phone" type="tel" placeholder="1234567890" required>
+              </div>
+
+              <div class="form-group">
+                <label for="message">Message</label>
+                <textarea id="message" name="message" placeholder="Hi, I would like to schedule a showing this weekend." required></textarea>
+              </div>
+
+              <button id="submit-button" class="primary" type="submit">Send inquiry</button>
+            </form>
+
+            <p id="form-message" class="form-message" role="status" aria-live="polite"></p>
+          </section>
         </div>
-
-        <button id="submit-button" type="submit">Send inquiry</button>
-      </form>
-
-      <p id="form-message" class="form-message" role="status" aria-live="polite"></p>
+      </div>
     </section>
   </main>
 
@@ -216,15 +616,52 @@
     const form = document.getElementById("lead-form");
     const formMessage = document.getElementById("form-message");
     const submitButton = document.getElementById("submit-button");
+    const leadsProcessed = document.getElementById("leadsProcessed");
+    const qualifiedLeads = document.getElementById("qualifiedLeads");
+    const bookedShowings = document.getElementById("bookedShowings");
+    const metricsStatus = document.getElementById("metricsStatus");
 
     function showMessage(type, message) {
-      formMessage.textContent = message;
+      formMessage.innerHTML = message;
       formMessage.className = `form-message ${type}`;
     }
 
     function setLoading(isLoading) {
       submitButton.disabled = isLoading;
       submitButton.textContent = isLoading ? "Sending..." : "Send inquiry";
+    }
+
+    function isQualified(lead) {
+      const intent = lead.aiIntent || (lead.aiExtraction && lead.aiExtraction.intent) || "unknown";
+      return ["buyer", "seller", "showing_request", "info_request"].includes(intent);
+    }
+
+    function isBooked(lead) {
+      return lead.bookingStatus === "booked" || lead.leadStatus === "booked" || lead.status === "booked";
+    }
+
+    async function loadMetrics() {
+      try {
+        const response = await fetch("/api/leads");
+
+        if (!response.ok) {
+          throw new Error("Metrics request failed");
+        }
+
+        const data = await response.json();
+        const leads = data.leads || [];
+        leadsProcessed.textContent = leads.length;
+        qualifiedLeads.textContent = leads.filter(isQualified).length;
+        bookedShowings.textContent = leads.filter(isBooked).length;
+        metricsStatus.textContent = leads.length > 0
+          ? "Dashboard data is live. Submit another lead below to watch the counts update."
+          : "No leads yet. Submit a sample lead below to start the demo flow.";
+      } catch (error) {
+        leadsProcessed.textContent = "-";
+        qualifiedLeads.textContent = "-";
+        bookedShowings.textContent = "-";
+        metricsStatus.textContent = "Metrics are unavailable until the backend and database are reachable.";
+      }
     }
 
     form.addEventListener("submit", async (event) => {
@@ -254,14 +691,18 @@
           throw new Error("Request failed");
         }
 
+        await response.json();
         form.reset();
-        showMessage("success", "Thanks! We will get back to you shortly.");
+        showMessage("success", "Thanks! We will get back to you shortly. <a href=\"/dashboard\">View the dashboard update.</a>");
+        loadMetrics();
       } catch (error) {
         showMessage("error", "Something went wrong. Please try again.");
       } finally {
         setLoading(false);
       }
     });
+
+    loadMetrics();
   </script>
 </body>
 </html>
