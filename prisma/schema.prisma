@@ -61,3 +61,17 @@ model AgentSettings {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 }
+
+// EventLog stores non-secret operational events for lead tracking and debugging.
+model EventLog {
+  id        Int      @id @default(autoincrement())
+  eventType String
+  leadId    Int?
+  message   String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([eventType])
+  @@index([leadId])
+  @@index([createdAt])
+}

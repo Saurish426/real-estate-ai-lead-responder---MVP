@@ -8,6 +8,7 @@ const {
   updateConversationMemory
 } = require("../services/conversationMemoryService");
 const { sendAgentLeadNotificationEmail, sendLeadReplyEmail } = require("../services/emailService");
+const { logEvent } = require("../services/eventLogService");
 const { getAgentSettings } = require("../services/settingsService");
 const { normalizeLead } = require("../utils/normalizeLead");
 
@@ -155,6 +156,16 @@ async function createLead(req, res) {
     let { savedLead, isExistingLead } = await saveLeadForSubmission(prisma, lead);
     let existingConversation = null;
 
+    await logEvent(prisma, {
+      eventType: "lead_created",
+      leadId: savedLead.id,
+      message: isExistingLead ? "Existing lead updated from new submission." : "New lead created.",
+      metadata: {
+        source: savedLead.source,
+        isExistingLead
+      }
+    });
+
     try {
       existingConversation = await findConversationForLead(prisma, savedLead.id);
     } catch (memoryLookupError) {
@@ -181,12 +192,33 @@ async function createLead(req, res) {
         });
 
         console.log(`AI extraction saved for lead ${savedLead.id}.`);
+
+        await logEvent(prisma, {
+          eventType: "ai_extraction_success",
+          leadId: savedLead.id,
+          message: "AI extraction completed.",
+          metadata: {
+            intent: aiExtraction.intent,
+            wants_showing: aiExtraction.wants_showing,
+            confidence: aiExtraction.confidence
+          }
+        });
       }
     } catch (aiError) {
       console.error("Lead was saved, but AI extraction failed:", {
         leadId: savedLead.id,
         message: aiError.message,
         code: aiError.code
+      });
+
+      await logEvent(prisma, {
+        eventType: "ai_extraction_failed",
+        leadId: savedLead.id,
+        message: "AI extraction failed.",
+        metadata: {
+          errorMessage: aiError.message,
+          errorCode: aiError.code
+        }
       });
     }
 
@@ -207,20 +239,69 @@ async function createLead(req, res) {
 
     try {
       aiResponse = await generateLeadResponse(savedLead, aiExtraction, existingConversation, agentSettings);
-      aiResponseGuardrail = applyAiResponseGuardrails(aiResponse);
-      aiResponse = aiResponseGuardrail.response;
 
-      if (aiResponseGuardrail.wasBlocked) {
-        console.warn("AI response was blocked by safety guardrails:", {
+      if (!aiResponse) {
+        await logEvent(prisma, {
+          eventType: "ai_response_failed",
           leadId: savedLead.id,
-          violations: aiResponseGuardrail.violations
+          message: "AI response generation returned no response.",
+          metadata: {
+            reason: "empty_response"
+          }
         });
+      } else {
+        await logEvent(prisma, {
+          eventType: "ai_response_generated",
+          leadId: savedLead.id,
+          message: "AI response generated.",
+          metadata: {
+            responseLength: aiResponse.length
+          }
+        });
+
+        aiResponseGuardrail = applyAiResponseGuardrails(aiResponse);
+        aiResponse = aiResponseGuardrail.response;
+
+        if (aiResponseGuardrail.wasBlocked) {
+          console.warn("AI response was blocked by safety guardrails:", {
+            leadId: savedLead.id,
+            violations: aiResponseGuardrail.violations
+          });
+
+          await logEvent(prisma, {
+            eventType: "guardrail_blocked",
+            leadId: savedLead.id,
+            message: "AI response blocked and replaced with safe fallback.",
+            metadata: {
+              violations: aiResponseGuardrail.violations
+            }
+          });
+        } else {
+          await logEvent(prisma, {
+            eventType: "guardrail_passed",
+            leadId: savedLead.id,
+            message: "AI response passed guardrail checks.",
+            metadata: {
+              responseLength: aiResponse ? aiResponse.length : 0
+            }
+          });
+        }
       }
     } catch (responseError) {
       console.error("Lead was saved, but AI response generation failed:", {
         leadId: savedLead.id,
         message: responseError.message,
         code: responseError.code
+      });
+
+      await logEvent(prisma, {
+        eventType: "ai_response_failed",
+        leadId: savedLead.id,
+        message: "AI response generation failed.",
+        metadata: {
+          errorMessage: responseError.message,
+          errorCode: responseError.code
+        }
       });
     }
 
@@ -248,11 +329,30 @@ async function createLead(req, res) {
       await sendLeadReplyEmail(savedLead);
       emailSent = true;
       console.log(`Lead reply email sent for lead ${savedLead.id}.`);
+
+      await logEvent(prisma, {
+        eventType: "email_auto_reply_sent",
+        leadId: savedLead.id,
+        message: "Customer auto-reply email sent.",
+        metadata: {
+          recipientDomain: savedLead.email.includes("@") ? savedLead.email.split("@")[1] : "unknown"
+        }
+      });
     } catch (emailError) {
       console.error("Lead was saved, but reply email failed:", {
         leadId: savedLead.id,
         message: emailError.message,
         code: emailError.code
+      });
+
+      await logEvent(prisma, {
+        eventType: "email_auto_reply_failed",
+        leadId: savedLead.id,
+        message: "Customer auto-reply email failed.",
+        metadata: {
+          errorMessage: emailError.message,
+          errorCode: emailError.code
+        }
       });
     }
 
@@ -268,11 +368,30 @@ async function createLead(req, res) {
       });
       agentNotificationSent = true;
       console.log(`Agent notification email sent for lead ${savedLead.id}.`);
+
+      await logEvent(prisma, {
+        eventType: "agent_notification_sent",
+        leadId: savedLead.id,
+        message: "Agent notification email sent.",
+        metadata: {
+          usedSettingsEmail: Boolean(agentSettings && agentSettings.agentEmail)
+        }
+      });
     } catch (notificationError) {
       console.error("Lead was saved, but agent notification failed:", {
         leadId: savedLead.id,
         message: notificationError.message,
         code: notificationError.code
+      });
+
+      await logEvent(prisma, {
+        eventType: "agent_notification_failed",
+        leadId: savedLead.id,
+        message: "Agent notification email failed.",
+        metadata: {
+          errorMessage: notificationError.message,
+          errorCode: notificationError.code
+        }
       });
     }
 

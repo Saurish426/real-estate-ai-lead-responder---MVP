@@ -48,6 +48,7 @@ loadEnvFile();
 const testRoutes = require("./routes/test");
 const leadsRoutes = require("./routes/leads");
 const settingsRoutes = require("./routes/settings");
+const eventsRoutes = require("./routes/events");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -59,6 +60,7 @@ app.use(express.json());
 app.use("/api/test", testRoutes);
 app.use("/api/leads", leadsRoutes);
 app.use("/api/settings", settingsRoutes);
+app.use("/api/events", eventsRoutes);
 
 // Deployment platforms can call this route to confirm the app is alive.
 app.get("/health", (req, res) => {

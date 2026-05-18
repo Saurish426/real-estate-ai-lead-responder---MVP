@@ -143,6 +143,10 @@
       border-collapse: collapse;
     }
 
+    .event-table {
+      min-width: 760px;
+    }
+
     th,
     td {
       border-bottom: 1px solid #e7edf5;
@@ -265,6 +269,31 @@
       font-weight: 800;
     }
 
+    .section-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 28px 0 12px;
+    }
+
+    h2 {
+      margin: 0;
+      color: #0f172a;
+      font-size: 20px;
+      line-height: 1.25;
+    }
+
+    .event-type {
+      color: #172033;
+      font-weight: 800;
+    }
+
+    .event-message {
+      max-width: 420px;
+      white-space: normal;
+    }
+
     @media (max-width: 900px) {
       .stats {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -352,6 +381,32 @@
         <tbody id="leadRows"></tbody>
       </table>
     </div>
+
+    <div class="section-header">
+      <div>
+        <h2>Recent Events</h2>
+        <p class="meta" id="eventsMeta">Latest lead automation events</p>
+      </div>
+    </div>
+
+    <section class="empty-state" id="eventsEmptyState">
+      <p class="empty-title">No events yet.</p>
+      <div>Submit a lead to see tracking events here.</div>
+    </section>
+
+    <div class="table-wrap" id="eventsTableWrap">
+      <table class="event-table">
+        <thead>
+          <tr>
+            <th>Event</th>
+            <th>Lead ID</th>
+            <th>Message</th>
+            <th>Created</th>
+          </tr>
+        </thead>
+        <tbody id="eventRows"></tbody>
+      </table>
+    </div>
   </main>
 
   <script>
@@ -365,6 +420,10 @@
     const needsHandoffEl = document.getElementById("needsHandoff");
     const qualifiedLeadsEl = document.getElementById("qualifiedLeads");
     const contactedLeadsEl = document.getElementById("contactedLeads");
+    const eventRows = document.getElementById("eventRows");
+    const eventsTableWrap = document.getElementById("eventsTableWrap");
+    const eventsEmptyState = document.getElementById("eventsEmptyState");
+    const eventsMeta = document.getElementById("eventsMeta");
 
     function formatDate(value) {
       if (!value) {
@@ -468,6 +527,24 @@
       });
     }
 
+    function renderEvents(events) {
+      eventRows.innerHTML = "";
+      eventsMeta.textContent = `${events.length} recent event${events.length === 1 ? "" : "s"}`;
+      eventsEmptyState.classList.toggle("visible", events.length === 0);
+      eventsTableWrap.style.display = events.length > 0 ? "block" : "none";
+
+      events.forEach((event) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td><span class="event-type">${escapeHtml(event.eventType)}</span></td>
+          <td>${escapeHtml(event.leadId)}</td>
+          <td class="event-message">${escapeHtml(event.message)}</td>
+          <td>${formatDate(event.createdAt)}</td>
+        `;
+        eventRows.appendChild(row);
+      });
+    }
+
     async function loadLeads() {
       refreshButton.disabled = true;
       refreshButton.textContent = "Refreshing...";
@@ -475,15 +552,21 @@
       statusEl.textContent = "Loading leads...";
 
       try {
-        const response = await fetch("/api/leads");
+        const [leadsResponse, eventsResponse] = await Promise.all([
+          fetch("/api/leads"),
+          fetch("/api/events")
+        ]);
 
-        if (!response.ok) {
+        if (!leadsResponse.ok || !eventsResponse.ok) {
           throw new Error("Request failed");
         }
 
-        const data = await response.json();
-        const leads = data.leads || [];
+        const leadsData = await leadsResponse.json();
+        const eventsData = await eventsResponse.json();
+        const leads = leadsData.leads || [];
+        const events = eventsData.events || [];
         renderLeads(leads);
+        renderEvents(events);
         statusEl.textContent = `Updated ${formatDate(new Date().toISOString())}`;
       } catch (error) {
         statusEl.className = "status-line error";
