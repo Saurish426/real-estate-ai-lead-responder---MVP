@@ -9,8 +9,11 @@
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
+    "build": "npm run prisma:generate",
     "prisma:generate": "prisma generate",
     "db:deploy": "prisma migrate deploy",
+    "deploy:prepare": "npm run prisma:generate && npm run db:deploy",
+    "verify:deployment": "node src/scripts/verifyDeployment.js",
     "capture:gmail-test": "node src/scripts/captureTestGmailLead.js"
   },
   "dependencies": {

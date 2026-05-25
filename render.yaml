@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: real-estate-ai-lead-responder
+    runtime: node
+    # Free works for validation. Upgrade to starter before a live demo or real traffic to avoid cold starts.
+    plan: free
+    buildCommand: npm ci && npm run deploy:prepare
+    startCommand: npm run start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: GMAIL_LEAD_CAPTURE_ENABLED
+        value: "false"
+      - key: DATABASE_URL
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_APP_PASSWORD
+        sync: false
+      - key: EMAIL_FROM
+        sync: false

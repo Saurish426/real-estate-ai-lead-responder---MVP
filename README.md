@@ -172,20 +172,23 @@ The script reads only the newest unread email with that exact subject, creates o
 
 ## Deployment
 
-Recommended platforms:
+Full deployment instructions are in [`DEPLOYMENT.md`](DEPLOYMENT.md).
 
-- Render
-- Railway
+Recommended stack:
+
+- Frontend + backend: Render Node Web Service
+- Database: Supabase PostgreSQL
+- Alternative: Railway Web Service with PostgreSQL
 
 Use these deployment settings:
 
-- Build command: `npm install && npm run prisma:generate && npm run db:deploy`
+- Build command: `npm ci && npm run deploy:prepare`
 - Start command: `npm run start`
 - Health check path: `/health`
 
 Add the required environment variables in the platform dashboard. Do not paste secrets into code, README files, screenshots, or Git commits.
 
-For Render, create a Web Service from this GitHub repo, select Node, set the build/start commands above, and add the environment variables. For Railway, create a new service from the repo, set the same commands, and add the same variables.
+For Render, create a Web Service or Blueprint from this GitHub repo, select Node, set the build/start commands above, and add the environment variables. For Railway, create a new service from the repo, set the same commands, and add the same variables.
 
 ## Production Notes
 
