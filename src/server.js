@@ -50,6 +50,7 @@ const leadsRoutes = require("./routes/leads");
 const settingsRoutes = require("./routes/settings");
 const eventsRoutes = require("./routes/events");
 const agentsRoutes = require("./routes/agents");
+const metricsRoutes = require("./routes/metrics");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -63,6 +64,7 @@ app.use("/api/leads", leadsRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/events", eventsRoutes);
 app.use("/api/agents", agentsRoutes);
+app.use("/api/metrics", metricsRoutes);
 
 // Deployment platforms can call this route to confirm the app is alive.
 app.get("/health", (req, res) => {

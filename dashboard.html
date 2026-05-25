@@ -113,7 +113,7 @@
 
     .stats {
       display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 14px;
       margin-bottom: 18px;
     }
@@ -140,6 +140,95 @@
       font-size: 30px;
       font-weight: 800;
       line-height: 1;
+    }
+
+    .stat-note {
+      margin-top: 8px;
+      color: #64748b;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .chart-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    .chart-card {
+      border: 1px solid #dbe3ef;
+      border-radius: 8px;
+      background: #ffffff;
+      box-shadow: 0 12px 32px rgba(26, 35, 57, 0.07);
+      padding: 18px;
+    }
+
+    .chart-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .chart-title {
+      color: #0f172a;
+      font-size: 15px;
+      font-weight: 800;
+    }
+
+    .chart-subtitle {
+      color: #64748b;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .bar-chart {
+      display: grid;
+      grid-template-columns: repeat(var(--bar-count), minmax(0, 1fr));
+      align-items: end;
+      gap: 10px;
+      min-height: 150px;
+    }
+
+    .bar-item {
+      display: grid;
+      align-items: end;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .bar {
+      min-height: 6px;
+      border-radius: 8px 8px 3px 3px;
+      background: linear-gradient(180deg, #2563eb, #14b8a6);
+    }
+
+    .bar-label {
+      overflow: hidden;
+      color: #64748b;
+      font-size: 11px;
+      font-weight: 700;
+      text-align: center;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .bar-value {
+      color: #0f172a;
+      font-size: 12px;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .chart-empty {
+      display: grid;
+      min-height: 150px;
+      place-items: center;
+      color: #64748b;
+      font-size: 14px;
+      text-align: center;
     }
 
     .status-line {
@@ -330,7 +419,8 @@
     }
 
     @media (max-width: 900px) {
-      .stats {
+      .stats,
+      .chart-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
     }
@@ -352,7 +442,8 @@
         flex-direction: column;
       }
 
-      .stats {
+      .stats,
+      .chart-grid {
         grid-template-columns: 1fr;
       }
 
@@ -384,23 +475,61 @@
       <div class="stat-card">
         <div class="stat-label">Total leads</div>
         <div class="stat-value" id="totalLeads">0</div>
+        <div class="stat-note">All captured leads</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">Showing requested</div>
+        <div class="stat-label">AI responses</div>
+        <div class="stat-value" id="totalAiResponses">0</div>
+        <div class="stat-note">Generated replies</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Qualified leads</div>
+        <div class="stat-value" id="qualifiedLeads">0</div>
+        <div class="stat-note">High-intent AI matches</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Showing requests</div>
         <div class="stat-value" id="showingRequested">0</div>
+        <div class="stat-note">Leads asking to tour</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Booked</div>
         <div class="stat-value" id="bookedLeads">0</div>
+        <div class="stat-note">Booked conversations</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">Needs handoff</div>
-        <div class="stat-value" id="needsHandoff">0</div>
+        <div class="stat-label">Avg response time</div>
+        <div class="stat-value" id="averageResponseTime">N/A</div>
+        <div class="stat-note">Lead to email sent</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">Qualified</div>
-        <div class="stat-value" id="qualifiedLeads">0</div>
+        <div class="stat-label">Response success</div>
+        <div class="stat-value" id="responseSuccessRate">0%</div>
+        <div class="stat-note" id="responseSuccessNote">0 email attempts</div>
       </div>
+      <div class="stat-card">
+        <div class="stat-label">This week</div>
+        <div class="stat-value" id="weeklyLeadTotal">0</div>
+        <div class="stat-note">Leads captured</div>
+      </div>
+    </section>
+
+    <section class="chart-grid" aria-label="Usage charts">
+      <article class="chart-card">
+        <div class="chart-head">
+          <div class="chart-title">Daily Usage</div>
+          <div class="chart-subtitle">Last 7 days</div>
+        </div>
+        <div class="bar-chart" id="dailyUsageChart" style="--bar-count: 7"></div>
+      </article>
+
+      <article class="chart-card">
+        <div class="chart-head">
+          <div class="chart-title">Weekly Usage</div>
+          <div class="chart-subtitle">Last 4 weeks</div>
+        </div>
+        <div class="bar-chart" id="weeklyUsageChart" style="--bar-count: 4"></div>
+      </article>
     </section>
 
     <div class="status-line" id="status"></div>
@@ -467,10 +596,16 @@
     const tableWrap = document.getElementById("tableWrap");
     const emptyState = document.getElementById("emptyState");
     const totalLeadsEl = document.getElementById("totalLeads");
+    const totalAiResponsesEl = document.getElementById("totalAiResponses");
     const showingRequestedEl = document.getElementById("showingRequested");
     const bookedLeadsEl = document.getElementById("bookedLeads");
-    const needsHandoffEl = document.getElementById("needsHandoff");
     const qualifiedLeadsEl = document.getElementById("qualifiedLeads");
+    const averageResponseTimeEl = document.getElementById("averageResponseTime");
+    const responseSuccessRateEl = document.getElementById("responseSuccessRate");
+    const responseSuccessNoteEl = document.getElementById("responseSuccessNote");
+    const weeklyLeadTotalEl = document.getElementById("weeklyLeadTotal");
+    const dailyUsageChart = document.getElementById("dailyUsageChart");
+    const weeklyUsageChart = document.getElementById("weeklyUsageChart");
     const eventRows = document.getElementById("eventRows");
     const eventsTableWrap = document.getElementById("eventsTableWrap");
     const eventsEmptyState = document.getElementById("eventsEmptyState");
@@ -531,6 +666,44 @@
       return leads.filter((lead) => cleanStatus(lead.leadStatus || lead.status) === status).length;
     }
 
+    function countAiResponses(leads) {
+      return leads.filter((lead) => lead.aiResponse).length;
+    }
+
+    function countShowingRequests(leads) {
+      return leads.filter((lead) => lead.wantsShowing || lead.bookingRequested).length;
+    }
+
+    function getCurrentWeekTotal(metrics) {
+      const weekly = metrics && metrics.usage && Array.isArray(metrics.usage.weekly) ? metrics.usage.weekly : [];
+      const currentWeek = weekly[weekly.length - 1];
+      return currentWeek ? currentWeek.count : 0;
+    }
+
+    function renderUsageChart(chartEl, items) {
+      const safeItems = Array.isArray(items) ? items : [];
+      const maxCount = Math.max(...safeItems.map((item) => item.count), 0);
+
+      chartEl.style.setProperty("--bar-count", String(Math.max(safeItems.length, 1)));
+
+      if (safeItems.length === 0 || maxCount === 0) {
+        chartEl.innerHTML = '<div class="chart-empty">No usage yet.</div>';
+        return;
+      }
+
+      chartEl.innerHTML = safeItems.map((item) => {
+        const height = Math.max(6, Math.round((item.count / maxCount) * 108));
+
+        return `
+          <div class="bar-item">
+            <div class="bar-value">${escapeHtml(item.count)}</div>
+            <div class="bar" style="height: ${height}px"></div>
+            <div class="bar-label" title="${escapeHtml(item.label)}">${escapeHtml(item.label)}</div>
+          </div>
+        `;
+      }).join("");
+    }
+
     function getAgentIdFromUrl() {
       const params = new URLSearchParams(window.location.search);
       return params.get("agentId") || "1";
@@ -581,13 +754,24 @@
       renderAgents(data.agents || []);
     }
 
-    function renderStats(leads) {
-      totalLeadsEl.textContent = leads.length;
-      showingRequestedEl.textContent = countByStatus(leads, "showing_requested");
-      bookedLeadsEl.textContent = countByStatus(leads, "booked");
-      needsHandoffEl.textContent = countByStatus(leads, "needs_handoff");
-      qualifiedLeadsEl.textContent = countByStatus(leads, "qualified");
-      leadCountEl.textContent = `${leads.length} recent lead${leads.length === 1 ? "" : "s"}`;
+    function renderStats(leads, metrics) {
+      const totals = metrics && metrics.totals ? metrics.totals : {};
+      const performance = metrics && metrics.performance ? metrics.performance : {};
+      const usage = metrics && metrics.usage ? metrics.usage : {};
+      const emailAttempts = Number(performance.emailAttempts || 0);
+
+      totalLeadsEl.textContent = totals.totalLeads ?? leads.length;
+      totalAiResponsesEl.textContent = totals.totalAiResponses ?? countAiResponses(leads);
+      showingRequestedEl.textContent = totals.showingRequests ?? countShowingRequests(leads);
+      bookedLeadsEl.textContent = totals.bookedLeads ?? countByStatus(leads, "booked");
+      qualifiedLeadsEl.textContent = totals.qualifiedLeads ?? countByStatus(leads, "qualified");
+      averageResponseTimeEl.textContent = performance.averageResponseTimeLabel || "N/A";
+      responseSuccessRateEl.textContent = performance.responseSuccessRateLabel || "0%";
+      responseSuccessNoteEl.textContent = `${emailAttempts} email attempt${emailAttempts === 1 ? "" : "s"}`;
+      weeklyLeadTotalEl.textContent = getCurrentWeekTotal(metrics);
+      leadCountEl.textContent = `${totals.totalLeads ?? leads.length} total lead${(totals.totalLeads ?? leads.length) === 1 ? "" : "s"}`;
+      renderUsageChart(dailyUsageChart, usage.daily);
+      renderUsageChart(weeklyUsageChart, usage.weekly);
     }
 
     function renderEmptyState(leads) {
@@ -596,9 +780,9 @@
       tableWrap.style.display = hasLeads ? "block" : "none";
     }
 
-    function renderLeads(leads) {
+    function renderLeads(leads, metrics) {
       leadRows.innerHTML = "";
-      renderStats(leads);
+      renderStats(leads, metrics);
       renderEmptyState(leads);
 
       leads.forEach((lead) => {
@@ -661,9 +845,10 @@
       statusEl.textContent = "Loading leads...";
 
       try {
-        const [leadsResponse, eventsResponse] = await Promise.all([
+        const [leadsResponse, eventsResponse, metricsResponse] = await Promise.all([
           fetch(buildAgentUrl("/api/leads")),
-          fetch(buildAgentUrl("/api/events"))
+          fetch(buildAgentUrl("/api/events")),
+          fetch(buildAgentUrl("/api/metrics"))
         ]);
 
         if (!leadsResponse.ok || !eventsResponse.ok) {
@@ -672,9 +857,10 @@
 
         const leadsData = await leadsResponse.json();
         const eventsData = await eventsResponse.json();
+        const metricsData = metricsResponse.ok ? await metricsResponse.json() : {};
         const leads = leadsData.leads || [];
         const events = eventsData.events || [];
-        renderLeads(leads);
+        renderLeads(leads, metricsData.metrics || null);
         renderEvents(events);
         statusEl.textContent = `Updated ${formatDate(new Date().toISOString())}`;
       } catch (error) {
