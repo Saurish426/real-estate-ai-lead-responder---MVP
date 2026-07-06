@@ -4,6 +4,7 @@ const { extractLeadDetails } = require("../services/aiExtractionService");
 const { applyAiResponseGuardrails } = require("../services/aiResponseGuardrailService");
 const { generateLeadResponse } = require("../services/aiResponseService");
 const { applyBookingFlow } = require("../services/bookingFlowService");
+const { createGoogleCalendarEventForLead } = require("../services/calendarService");
 const {
   findConversationForLead,
   saveLeadForSubmission,
@@ -11,6 +12,7 @@ const {
 } = require("../services/conversationMemoryService");
 const { sendAgentLeadNotificationEmail, sendLeadReplyEmail } = require("../services/emailService");
 const { logEvent } = require("../services/eventLogService");
+const { scheduleFollowUpReminder } = require("../services/followUpReminderService");
 const { getAgentSettings } = require("../services/settingsService");
 const { normalizeLead } = require("../utils/normalizeLead");
 
@@ -286,6 +288,10 @@ async function listLeads(req, res) {
           bookingStatus: conversation ? conversation.bookingStatus || "none" : "none",
           bookingRequested: conversation ? conversation.bookingRequested === true : false,
           bookingLinkSent: conversation ? conversation.bookingLinkSent === true : false,
+          calendarEventId: conversation ? conversation.calendarEventId : null,
+          calendarEventLink: conversation ? conversation.calendarEventLink : null,
+          followUpReminderAt: conversation ? conversation.followUpReminderAt : null,
+          followUpReminderStatus: conversation ? conversation.followUpReminderStatus : null,
           conversationStatus: conversation ? conversation.status : "none",
           messageCount: conversation ? conversation.messageCount : 0,
           aiSummary: conversation ? conversation.aiSummary : null,
@@ -736,6 +742,170 @@ async function createLead(req, res) {
       });
     }
 
+    let calendarIntegration = null;
+
+    try {
+      calendarIntegration = await createGoogleCalendarEventForLead({
+        lead: savedLead,
+        bookingFlow,
+        agentSettings
+      });
+
+      if (calendarIntegration.eventCreated) {
+        console.log(`Google Calendar event created for lead ${savedLead.id}.`);
+
+        await logEvent(prisma, {
+          eventType: "calendar_event_created",
+          agentId: savedLead.agentId,
+          leadId: savedLead.id,
+          message: "Google Calendar event created for showing follow-up.",
+          metadata: {
+            provider: calendarIntegration.provider,
+            calendarId: calendarIntegration.calendarId,
+            eventId: calendarIntegration.eventId,
+            scheduledFor: calendarIntegration.scheduledFor
+          }
+        });
+
+        if (conversation && calendarIntegration.eventId) {
+          try {
+            conversation = await prisma.conversation.update({
+              where: {
+                id: conversation.id
+              },
+              data: {
+                calendarEventId: calendarIntegration.eventId,
+                calendarEventLink: calendarIntegration.eventLink
+              }
+            });
+          } catch (calendarMetadataError) {
+            console.error("Calendar event was created, but conversation metadata update failed:", {
+              leadId: savedLead.id,
+              message: calendarMetadataError.message,
+              code: calendarMetadataError.code
+            });
+          }
+        }
+      } else if (calendarIntegration.skippedReason !== "no_showing_request") {
+        await logEvent(prisma, {
+          eventType: "calendar_event_skipped",
+          agentId: savedLead.agentId,
+          leadId: savedLead.id,
+          message: "Google Calendar event creation skipped.",
+          metadata: {
+            provider: calendarIntegration.provider,
+            enabled: calendarIntegration.enabled,
+            skippedReason: calendarIntegration.skippedReason
+          }
+        });
+      }
+    } catch (calendarError) {
+      calendarIntegration = {
+        provider: "google_calendar",
+        eventCreated: false,
+        error: "calendar_event_failed"
+      };
+
+      console.error("Lead was saved, but Google Calendar event creation failed:", {
+        leadId: savedLead.id,
+        message: calendarError.message,
+        code: calendarError.code,
+        statusCode: calendarError.statusCode
+      });
+
+      await logEvent(prisma, {
+        eventType: "calendar_event_failed",
+        agentId: savedLead.agentId,
+        leadId: savedLead.id,
+        message: "Google Calendar event creation failed.",
+        metadata: {
+          provider: calendarError.provider || "google_calendar",
+          errorMessage: calendarError.message,
+          statusCode: calendarError.statusCode,
+          responseBody: calendarError.responseBody
+        }
+      });
+    }
+
+    let followUpReminderResult = null;
+
+    try {
+      followUpReminderResult = await scheduleFollowUpReminder(prisma, {
+        lead: savedLead,
+        conversation,
+        bookingFlow
+      });
+
+      if (followUpReminderResult.reminderScheduled) {
+        console.log(`Follow-up reminder scheduled for lead ${savedLead.id}.`);
+
+        await logEvent(prisma, {
+          eventType: "follow_up_reminder_scheduled",
+          agentId: savedLead.agentId,
+          leadId: savedLead.id,
+          message: "Follow-up reminder scheduled.",
+          metadata: {
+            reminderId: followUpReminderResult.reminder.id,
+            reminderType: followUpReminderResult.reminder.reminderType,
+            scheduledFor: followUpReminderResult.scheduledFor,
+            delayHours: followUpReminderResult.delayHours
+          }
+        });
+
+        if (conversation) {
+          try {
+            conversation = await prisma.conversation.update({
+              where: {
+                id: conversation.id
+              },
+              data: {
+                followUpReminderAt: followUpReminderResult.scheduledFor,
+                followUpReminderStatus: followUpReminderResult.reminder.status
+              }
+            });
+          } catch (reminderMetadataError) {
+            console.error("Reminder was scheduled, but conversation metadata update failed:", {
+              leadId: savedLead.id,
+              message: reminderMetadataError.message,
+              code: reminderMetadataError.code
+            });
+          }
+        }
+      } else {
+        await logEvent(prisma, {
+          eventType: "follow_up_reminder_skipped",
+          agentId: savedLead.agentId,
+          leadId: savedLead.id,
+          message: "Follow-up reminder scheduling skipped.",
+          metadata: {
+            skippedReason: followUpReminderResult.skippedReason
+          }
+        });
+      }
+    } catch (reminderError) {
+      followUpReminderResult = {
+        reminderScheduled: false,
+        error: "follow_up_reminder_failed"
+      };
+
+      console.error("Lead was saved, but follow-up reminder scheduling failed:", {
+        leadId: savedLead.id,
+        message: reminderError.message,
+        code: reminderError.code
+      });
+
+      await logEvent(prisma, {
+        eventType: "follow_up_reminder_failed",
+        agentId: savedLead.agentId,
+        leadId: savedLead.id,
+        message: "Follow-up reminder scheduling failed.",
+        metadata: {
+          errorMessage: reminderError.message,
+          errorCode: reminderError.code
+        }
+      });
+    }
+
     let emailSent = false;
 
     try {
@@ -779,7 +949,9 @@ async function createLead(req, res) {
         aiExtraction,
         aiResponse,
         conversation,
-        agentSettings
+        agentSettings,
+        calendarIntegration,
+        followUpReminder: followUpReminderResult
       });
       agentNotificationSent = true;
       console.log(`Agent notification email sent for lead ${savedLead.id}.`);
@@ -837,6 +1009,8 @@ async function createLead(req, res) {
       aiResponse,
       aiResponseGuardrail,
       bookingFlow,
+      calendarIntegration,
+      followUpReminder: followUpReminderResult,
       conversation,
       isExistingLead,
       emailSent,

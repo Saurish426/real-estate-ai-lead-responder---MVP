@@ -1,13 +1,13 @@
 # Real Estate AI Lead Responder MVP
 
-Node.js + Express MVP for capturing real estate leads, saving them to PostgreSQL with Prisma, sending Gmail replies, extracting lead intent with OpenAI, generating AI response drafts, storing conversation memory, and viewing leads/settings in simple web pages.
+Node.js + Express MVP for capturing real estate leads, saving them to PostgreSQL with Prisma, sending email replies, extracting lead intent with OpenAI, generating AI response drafts, storing conversation memory, scheduling follow-up reminders, and viewing leads/settings in simple web pages.
 
 ## Requirements
 
 - Node.js 18 or newer
 - npm
 - PostgreSQL database
-- Gmail app password for outgoing email
+- Gmail app password or SMTP-compatible email credentials for outgoing email
 - OpenAI API key
 
 ## Local Setup
@@ -62,10 +62,41 @@ OPENAI_API_KEY=
 EMAIL_USER=
 EMAIL_APP_PASSWORD=
 EMAIL_FROM=
+EMAIL_PROVIDER=gmail
 GMAIL_LEAD_CAPTURE_ENABLED=false
 ```
 
 Keep `GMAIL_LEAD_CAPTURE_ENABLED=false` unless you intentionally enable future automatic Gmail polling. The current Gmail capture script is manual.
+
+## Integrations
+
+Email uses a provider-ready architecture:
+
+- `EMAIL_PROVIDER=gmail` uses Gmail SMTP and is the default.
+- `EMAIL_PROVIDER=outlook` uses Outlook SMTP defaults: `smtp.office365.com:587`.
+- `EMAIL_PROVIDER=smtp` uses generic SMTP with `SMTP_HOST`, `SMTP_PORT`, and `SMTP_SECURE`.
+
+Optional Google Calendar event creation is disabled by default. To enable tentative showing follow-up events, set:
+
+```bash
+GOOGLE_CALENDAR_ENABLED=true
+GOOGLE_CALENDAR_ID=primary
+GOOGLE_CALENDAR_ACCESS_TOKEN=
+GOOGLE_CALENDAR_TIME_ZONE=America/New_York
+GOOGLE_CALENDAR_DEFAULT_EVENT_DURATION_MINUTES=30
+GOOGLE_CALENDAR_DEFAULT_EVENT_START_HOURS=24
+```
+
+Google Calendar failures never block lead creation. If a lead wants a showing and Calendar is configured, the app creates a tentative follow-up event and stores the event metadata with the conversation.
+
+Automatic follow-up reminder records are enabled by default:
+
+```bash
+FOLLOW_UP_REMINDERS_ENABLED=true
+FOLLOW_UP_REMINDER_DELAY_HOURS=24
+```
+
+Reminder scheduling failures never block lead creation, email sending, AI extraction, or AI response generation.
 
 ## App Routes
 
@@ -151,6 +182,7 @@ Use this flow for a polished investor or accelerator demo:
 4. Customer auto-reply email sends, and the agent notification email sends.
 5. Dashboard updates at `http://localhost:3000/dashboard` with lead status, AI data, email status, and recent events.
 6. Booking workflow appears when the lead asks for a showing, including the saved calendar link when agent settings include one.
+7. Optional Google Calendar and follow-up reminder metadata appears when those integrations are configured.
 
 Before the demo, open `http://localhost:3000/settings` and save the agent name, business name, reply tone, and calendar link you want the AI to use.
 
@@ -192,8 +224,9 @@ For Render, create a Web Service or Blueprint from this GitHub repo, select Node
 
 ## Production Notes
 
-- The app uses environment variables for database, email, OpenAI, and Gmail capture settings.
+- The app uses environment variables for database, email, OpenAI, Gmail capture, Google Calendar, and reminder settings.
 - `.env` is ignored by Git and should stay local.
 - Unknown routes return JSON `404` responses.
 - Unexpected server errors are logged, but production responses stay generic.
 - AI extraction or AI response failures are logged without blocking lead saving or email sending.
+- Calendar and reminder failures are logged without blocking lead creation.

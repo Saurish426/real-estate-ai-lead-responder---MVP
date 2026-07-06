@@ -42,7 +42,9 @@ function applyBookingFlow(response, { lead, aiExtraction, agentSettings } = {}) 
       bookingRequested,
       bookingLinkSent,
       bookingStatus,
-      calendarLink: bookingLinkSent ? calendarLink : null
+      calendarLink: bookingLinkSent ? calendarLink : null,
+      bookingLink: bookingLinkSent ? calendarLink : null,
+      bookingLinkSource: bookingLinkSent ? "agent_settings" : null
     };
   }
 
@@ -61,7 +63,9 @@ function applyBookingFlow(response, { lead, aiExtraction, agentSettings } = {}) 
     bookingRequested,
     bookingLinkSent,
     bookingStatus,
-    calendarLink: bookingLinkSent ? calendarLink : null
+    calendarLink: bookingLinkSent ? calendarLink : null,
+    bookingLink: bookingLinkSent ? calendarLink : null,
+    bookingLinkSource: bookingLinkSent ? "agent_settings" : null
   };
 }
 

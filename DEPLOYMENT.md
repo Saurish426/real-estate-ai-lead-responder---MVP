@@ -34,13 +34,24 @@ OPENAI_API_KEY=
 EMAIL_USER=
 EMAIL_APP_PASSWORD=
 EMAIL_FROM=
+EMAIL_PROVIDER=gmail
 GMAIL_LEAD_CAPTURE_ENABLED=false
+GOOGLE_CALENDAR_ENABLED=false
+GOOGLE_CALENDAR_ID=primary
+GOOGLE_CALENDAR_ACCESS_TOKEN=
+GOOGLE_CALENDAR_TIME_ZONE=America/New_York
+GOOGLE_CALENDAR_DEFAULT_EVENT_DURATION_MINUTES=30
+GOOGLE_CALENDAR_DEFAULT_EVENT_START_HOURS=24
+FOLLOW_UP_REMINDERS_ENABLED=true
+FOLLOW_UP_REMINDER_DELAY_HOURS=24
 NODE_ENV=production
 ```
 
 Notes:
 
 - Keep `GMAIL_LEAD_CAPTURE_ENABLED=false` for production demos unless manual Gmail capture is intentionally expanded later.
+- Keep `GOOGLE_CALENDAR_ENABLED=false` until a valid Google Calendar OAuth access token is configured in the platform environment manager.
+- Set `EMAIL_PROVIDER=outlook` for Outlook SMTP or `EMAIL_PROVIDER=smtp` for a custom SMTP host.
 - Use the production PostgreSQL connection string for `DATABASE_URL`.
 - Keep all secrets in the platform environment variable manager, not in `.env`, README files, screenshots, logs, or commits.
 
@@ -153,6 +164,7 @@ The verification script checks:
 - AI response generation works publicly
 - customer email sends publicly
 - booking flow works publicly
+- optional calendar/reminder metadata works when configured
 - dashboard updates publicly
 
 The script submits one deployment test lead. It does not print secrets.

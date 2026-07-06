@@ -995,6 +995,8 @@
               <span class="pill status-pill">${escapeHtml(lead.bookingStatus || "none")}</span>
               <span class="pill ${lead.bookingRequested ? "yes" : "no"}">Requested: ${yesNo(lead.bookingRequested)}</span>
               <span class="pill ${lead.bookingLinkSent ? "yes" : "no"}">Link: ${yesNo(lead.bookingLinkSent)}</span>
+              <span class="pill ${lead.calendarEventId ? "yes" : "no"}">Calendar: ${yesNo(lead.calendarEventId)}</span>
+              <span class="pill ${lead.followUpReminderAt ? "yes" : "no"}">Reminder: ${lead.followUpReminderAt ? formatDate(lead.followUpReminderAt) : "No"}</span>
             </div>
           </td>
           <td class="response">${escapeHtml(lead.aiResponse)}</td>

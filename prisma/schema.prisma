@@ -49,6 +49,7 @@ model Agent {
   settings     AgentSettings?
   users        User[]
   leadNotes    LeadNote[]
+  followUpReminders FollowUpReminder[]
 }
 
 // A lead is a potential real estate client who contacts the business.
@@ -69,6 +70,7 @@ model Lead {
   updatedAt DateTime @updatedAt
   agent     Agent    @relation(fields: [agentId], references: [id])
   notes     LeadNote[]
+  followUpReminders FollowUpReminder[]
 
   @@index([email])
   @@index([agentId])
@@ -103,6 +105,10 @@ model Conversation {
   bookingStatus    String  @default("none")
   bookingRequested Boolean @default(false)
   bookingLinkSent  Boolean @default(false)
+  calendarEventId  String?
+  calendarEventLink String?
+  followUpReminderAt DateTime?
+  followUpReminderStatus String?
   agent            Agent   @relation(fields: [agentId], references: [id])
 
   @@index([leadId])
@@ -115,6 +121,28 @@ model Booking {
   leadId Int
   time   DateTime
   status String
+}
+
+// FollowUpReminder stores future reminders for agents to follow up with leads.
+model FollowUpReminder {
+  id             Int       @id @default(autoincrement())
+  agentId        Int       @default(1)
+  leadId         Int
+  conversationId Int?
+  reminderType   String    @default("lead_follow_up")
+  status         String    @default("scheduled")
+  message        String
+  scheduledFor   DateTime
+  sentAt         DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  agent          Agent     @relation(fields: [agentId], references: [id])
+  lead           Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([agentId])
+  @@index([leadId])
+  @@index([scheduledFor])
+  @@index([status])
 }
 
 // AgentSettings stores the simple business profile used by the AI reply writer.
