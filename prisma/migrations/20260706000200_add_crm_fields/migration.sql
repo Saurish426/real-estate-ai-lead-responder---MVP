@@ -1,0 +1,31 @@
+ALTER TABLE "Lead" ADD COLUMN IF NOT EXISTS "crmStatus" TEXT NOT NULL DEFAULT 'New';
+ALTER TABLE "Lead" ADD COLUMN IF NOT EXISTS "archived" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "Lead" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+CREATE TABLE IF NOT EXISTS "LeadNote" (
+  "id" SERIAL NOT NULL,
+  "agentId" INTEGER NOT NULL DEFAULT 1,
+  "leadId" INTEGER NOT NULL,
+  "body" TEXT NOT NULL,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  CONSTRAINT "LeadNote_pkey" PRIMARY KEY ("id")
+);
+
+CREATE INDEX IF NOT EXISTS "Lead_crmStatus_idx" ON "Lead"("crmStatus");
+CREATE INDEX IF NOT EXISTS "Lead_archived_idx" ON "Lead"("archived");
+CREATE INDEX IF NOT EXISTS "LeadNote_agentId_idx" ON "LeadNote"("agentId");
+CREATE INDEX IF NOT EXISTS "LeadNote_leadId_idx" ON "LeadNote"("leadId");
+CREATE INDEX IF NOT EXISTS "LeadNote_createdAt_idx" ON "LeadNote"("createdAt");
+
+DO $$
+BEGIN
+  ALTER TABLE "LeadNote" ADD CONSTRAINT "LeadNote_agentId_fkey" FOREIGN KEY ("agentId") REFERENCES "Agent"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+  ALTER TABLE "LeadNote" ADD CONSTRAINT "LeadNote_leadId_fkey" FOREIGN KEY ("leadId") REFERENCES "Lead"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;

@@ -48,6 +48,7 @@ model Agent {
   conversations Conversation[]
   settings     AgentSettings?
   users        User[]
+  leadNotes    LeadNote[]
 }
 
 // A lead is a potential real estate client who contacts the business.
@@ -59,14 +60,35 @@ model Lead {
   phone     String
   message   String
   source    String
+  crmStatus String   @default("New")
+  archived  Boolean  @default(false)
   aiExtraction Json?
   emailSent Boolean @default(false)
   agentNotificationSent Boolean @default(false)
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   agent     Agent    @relation(fields: [agentId], references: [id])
+  notes     LeadNote[]
 
   @@index([email])
   @@index([agentId])
+  @@index([crmStatus])
+  @@index([archived])
+}
+
+// A LeadNote stores agent-entered CRM notes for a lead.
+model LeadNote {
+  id        Int      @id @default(autoincrement())
+  agentId   Int      @default(1)
+  leadId    Int
+  body      String
+  createdAt DateTime @default(now())
+  agent     Agent    @relation(fields: [agentId], references: [id])
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([agentId])
+  @@index([leadId])
+  @@index([createdAt])
 }
 
 // A conversation stores the latest message and status for a lead follow-up.

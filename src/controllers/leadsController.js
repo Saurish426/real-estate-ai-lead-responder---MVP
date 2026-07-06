@@ -15,6 +15,138 @@ const { getAgentSettings } = require("../services/settingsService");
 const { normalizeLead } = require("../utils/normalizeLead");
 
 const REQUIRED_LEAD_FIELDS = ["name", "email", "phone", "message", "source"];
+const CRM_STATUSES = ["New", "Qualified", "Contacted", "Showing", "Closed", "Lost"];
+
+function cleanString(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function getLeadId(req) {
+  const leadId = Number(req.params.id);
+  return Number.isInteger(leadId) && leadId > 0 ? leadId : null;
+}
+
+function normalizeCrmStatus(value) {
+  const normalizedValue = cleanString(value).toLowerCase();
+  return CRM_STATUSES.find((status) => status.toLowerCase() === normalizedValue) || null;
+}
+
+function getArchiveFilter(value) {
+  if (value === "true" || value === true) {
+    return true;
+  }
+
+  if (value === "all") {
+    return undefined;
+  }
+
+  return false;
+}
+
+function getListLimit(value) {
+  const limit = Number(value);
+  return Number.isInteger(limit) && limit > 0 ? Math.min(limit, 100) : 50;
+}
+
+function buildLeadSearch(search) {
+  const query = cleanString(search);
+
+  if (!query) {
+    return undefined;
+  }
+
+  return [
+    {
+      name: {
+        contains: query,
+        mode: "insensitive"
+      }
+    },
+    {
+      email: {
+        contains: query,
+        mode: "insensitive"
+      }
+    },
+    {
+      phone: {
+        contains: query,
+        mode: "insensitive"
+      }
+    },
+    {
+      message: {
+        contains: query,
+        mode: "insensitive"
+      }
+    },
+    {
+      source: {
+        contains: query,
+        mode: "insensitive"
+      }
+    }
+  ];
+}
+
+function buildLeadWhere({ agentId, query }) {
+  const where = {
+    agentId
+  };
+  const archived = getArchiveFilter(query.archived);
+  const search = buildLeadSearch(query.search || query.q);
+  const crmStatus = normalizeCrmStatus(query.status);
+
+  if (archived !== undefined) {
+    where.archived = archived;
+  }
+
+  if (crmStatus) {
+    where.crmStatus = crmStatus;
+  }
+
+  if (search) {
+    where.OR = search;
+  }
+
+  return where;
+}
+
+function getSafeLeadUpdate(input = {}) {
+  const data = {};
+
+  ["name", "email", "phone", "message", "source"].forEach((field) => {
+    if (Object.prototype.hasOwnProperty.call(input, field)) {
+      const value = cleanString(input[field]);
+
+      if (value) {
+        data[field] = value;
+      }
+    }
+  });
+
+  if (Object.prototype.hasOwnProperty.call(input, "crmStatus")) {
+    const crmStatus = normalizeCrmStatus(input.crmStatus);
+
+    if (!crmStatus) {
+      const error = new Error("Invalid CRM status.");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    data.crmStatus = crmStatus;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(input, "archived")) {
+    data.archived = input.archived === true;
+  }
+
+  return data;
+}
+
+function getNoteBody(input = {}) {
+  return cleanString(input.body || input.note || input.message);
+}
 
 function formatAiExtractionSummary(aiExtraction) {
   if (!aiExtraction) {
@@ -67,13 +199,14 @@ async function listLeads(req, res) {
     const prisma = getPrismaClient();
     const agent = await getAgentOrDefault(prisma, getAgentIdFromRequest(req));
     const leads = await prisma.lead.findMany({
-      where: {
-        agentId: agent.id
-      },
+      where: buildLeadWhere({
+        agentId: agent.id,
+        query: req.query || {}
+      }),
       orderBy: {
-        createdAt: "desc"
+        createdAt: req.query && req.query.sort === "oldest" ? "asc" : "desc"
       },
-      take: 50
+      take: getListLimit(req.query && req.query.limit)
     });
     const conversations = await prisma.conversation.findMany({
       where: {
@@ -86,12 +219,30 @@ async function listLeads(req, res) {
         id: "desc"
       }
     });
+    const notes = await prisma.leadNote.findMany({
+      where: {
+        agentId: agent.id,
+        leadId: {
+          in: leads.map((lead) => lead.id)
+        }
+      },
+      orderBy: {
+        createdAt: "desc"
+      }
+    });
     const conversationByLeadId = new Map();
+    const notesByLeadId = new Map();
 
     conversations.forEach((conversation) => {
       if (!conversationByLeadId.has(conversation.leadId)) {
         conversationByLeadId.set(conversation.leadId, conversation);
       }
+    });
+
+    notes.forEach((note) => {
+      const leadNotes = notesByLeadId.get(note.leadId) || [];
+      leadNotes.push(note);
+      notesByLeadId.set(note.leadId, leadNotes);
     });
 
     return res.json({
@@ -102,12 +253,14 @@ async function listLeads(req, res) {
         const aiConfidence = getAiConfidence(lead.aiExtraction);
         const emailSent = lead.emailSent === true;
         const agentNotificationSent = lead.agentNotificationSent === true;
-        const leadStatus = getLeadStatus({
+        const derivedStatus = getLeadStatus({
           aiExtraction: lead.aiExtraction,
           emailSent,
           agentNotificationSent,
           conversation
         });
+        const crmStatus = normalizeCrmStatus(lead.crmStatus) || "New";
+        const leadNotes = notesByLeadId.get(lead.id) || [];
 
         return {
           id: lead.id,
@@ -116,8 +269,11 @@ async function listLeads(req, res) {
           email: lead.email,
           phone: lead.phone,
           source: lead.source,
-          status: leadStatus,
-          leadStatus,
+          status: crmStatus,
+          leadStatus: crmStatus,
+          derivedStatus,
+          crmStatus,
+          archived: lead.archived === true,
           latestMessage: lead.message,
           aiExtraction: lead.aiExtraction,
           aiExtractionSummary: formatAiExtractionSummary(lead.aiExtraction),
@@ -134,7 +290,11 @@ async function listLeads(req, res) {
           messageCount: conversation ? conversation.messageCount : 0,
           aiSummary: conversation ? conversation.aiSummary : null,
           conversation,
-          createdAt: lead.createdAt
+          notes: leadNotes,
+          notesCount: leadNotes.length,
+          latestNote: leadNotes[0] || null,
+          createdAt: lead.createdAt,
+          updatedAt: lead.updatedAt
         };
       })
     });
@@ -147,6 +307,217 @@ async function listLeads(req, res) {
 
     return res.status(500).json({
       error: "Unable to list leads."
+    });
+  }
+}
+
+async function updateLead(req, res) {
+  try {
+    const leadId = getLeadId(req);
+
+    if (!leadId) {
+      return res.status(400).json({
+        error: "Invalid lead id."
+      });
+    }
+
+    const prisma = getPrismaClient();
+    const agent = await getAgentOrDefault(prisma, getAgentIdFromRequest(req));
+    const data = getSafeLeadUpdate(req.body);
+
+    if (Object.keys(data).length === 0) {
+      return res.status(400).json({
+        error: "No lead updates provided."
+      });
+    }
+
+    const existingLead = await prisma.lead.findFirst({
+      where: {
+        id: leadId,
+        agentId: agent.id
+      }
+    });
+
+    if (!existingLead) {
+      return res.status(404).json({
+        error: "Lead not found."
+      });
+    }
+
+    const lead = await prisma.lead.update({
+      where: {
+        id: leadId
+      },
+      data
+    });
+
+    await logEvent(prisma, {
+      eventType: "lead_crm_updated",
+      agentId: agent.id,
+      leadId: lead.id,
+      message: "Lead CRM fields updated.",
+      metadata: {
+        updatedFields: Object.keys(data)
+      }
+    });
+
+    return res.json({
+      lead
+    });
+  } catch (error) {
+    console.error("Error updating lead:", {
+      message: error.message,
+      code: error.code,
+      stack: error.stack
+    });
+
+    return res.status(error.statusCode || 500).json({
+      error: error.statusCode ? error.message : "Unable to update lead."
+    });
+  }
+}
+
+async function archiveLead(req, res) {
+  req.body = {
+    archived: true
+  };
+  return updateLead(req, res);
+}
+
+async function deleteLead(req, res) {
+  try {
+    const leadId = getLeadId(req);
+
+    if (!leadId) {
+      return res.status(400).json({
+        error: "Invalid lead id."
+      });
+    }
+
+    const prisma = getPrismaClient();
+    const agent = await getAgentOrDefault(prisma, getAgentIdFromRequest(req));
+    const existingLead = await prisma.lead.findFirst({
+      where: {
+        id: leadId,
+        agentId: agent.id
+      }
+    });
+
+    if (!existingLead) {
+      return res.status(404).json({
+        error: "Lead not found."
+      });
+    }
+
+    await prisma.$transaction([
+      prisma.conversation.deleteMany({
+        where: {
+          leadId,
+          agentId: agent.id
+        }
+      }),
+      prisma.leadNote.deleteMany({
+        where: {
+          leadId,
+          agentId: agent.id
+        }
+      }),
+      prisma.lead.delete({
+        where: {
+          id: leadId
+        }
+      })
+    ]);
+
+    await logEvent(prisma, {
+      eventType: "lead_deleted",
+      agentId: agent.id,
+      leadId,
+      message: "Lead deleted from CRM.",
+      metadata: {
+        emailDomain: existingLead.email.includes("@") ? existingLead.email.split("@")[1] : "unknown"
+      }
+    });
+
+    return res.json({
+      deleted: true,
+      leadId
+    });
+  } catch (error) {
+    console.error("Error deleting lead:", {
+      message: error.message,
+      code: error.code,
+      stack: error.stack
+    });
+
+    return res.status(500).json({
+      error: "Unable to delete lead."
+    });
+  }
+}
+
+async function addLeadNote(req, res) {
+  try {
+    const leadId = getLeadId(req);
+    const body = getNoteBody(req.body);
+
+    if (!leadId) {
+      return res.status(400).json({
+        error: "Invalid lead id."
+      });
+    }
+
+    if (!body) {
+      return res.status(400).json({
+        error: "Note body is required."
+      });
+    }
+
+    const prisma = getPrismaClient();
+    const agent = await getAgentOrDefault(prisma, getAgentIdFromRequest(req));
+    const existingLead = await prisma.lead.findFirst({
+      where: {
+        id: leadId,
+        agentId: agent.id
+      }
+    });
+
+    if (!existingLead) {
+      return res.status(404).json({
+        error: "Lead not found."
+      });
+    }
+
+    const note = await prisma.leadNote.create({
+      data: {
+        agentId: agent.id,
+        leadId,
+        body
+      }
+    });
+
+    await logEvent(prisma, {
+      eventType: "lead_note_added",
+      agentId: agent.id,
+      leadId,
+      message: "Lead note added.",
+      metadata: {
+        noteLength: body.length
+      }
+    });
+
+    return res.status(201).json({
+      note
+    });
+  } catch (error) {
+    console.error("Error adding lead note:", {
+      message: error.message,
+      code: error.code,
+      stack: error.stack
+    });
+
+    return res.status(500).json({
+      error: "Unable to add note."
     });
   }
 }
@@ -485,6 +856,10 @@ async function createLead(req, res) {
 }
 
 module.exports = {
+  addLeadNote,
+  archiveLead,
   createLead,
-  listLeads
+  deleteLead,
+  listLeads,
+  updateLead
 };

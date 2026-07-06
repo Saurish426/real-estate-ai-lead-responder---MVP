@@ -231,6 +231,54 @@
       text-align: center;
     }
 
+    .crm-toolbar {
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) repeat(3, minmax(150px, 190px)) auto;
+      gap: 12px;
+      margin-bottom: 14px;
+      border: 1px solid #dbe3ef;
+      border-radius: 8px;
+      background: #ffffff;
+      box-shadow: 0 12px 32px rgba(26, 35, 57, 0.07);
+      padding: 14px;
+    }
+
+    .crm-control {
+      display: grid;
+      gap: 6px;
+    }
+
+    .crm-control label {
+      color: #475569;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .crm-control input,
+    .crm-control select,
+    .status-select {
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: #ffffff;
+      color: #172033;
+      font: inherit;
+      font-size: 14px;
+      padding: 10px 11px;
+    }
+
+    .toolbar-button {
+      align-self: end;
+      background: #f1f5f9;
+      color: #334155;
+      box-shadow: none;
+    }
+
+    .toolbar-button:hover {
+      background: #e2e8f0;
+    }
+
     .status-line {
       min-height: 22px;
       margin-bottom: 14px;
@@ -253,7 +301,7 @@
 
     table {
       width: 100%;
-      min-width: 1420px;
+      min-width: 1760px;
       border-collapse: collapse;
     }
 
@@ -372,6 +420,54 @@
       gap: 8px;
     }
 
+    .note-preview {
+      max-width: 220px;
+      color: #475569;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .row-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 7px;
+      min-width: 190px;
+    }
+
+    .small-button {
+      border-radius: 8px;
+      font-size: 12px;
+      padding: 8px 9px;
+      box-shadow: none;
+    }
+
+    .small-button.neutral {
+      background: #f1f5f9;
+      color: #334155;
+    }
+
+    .small-button.neutral:hover {
+      background: #e2e8f0;
+    }
+
+    .small-button.warning {
+      background: #fff7ed;
+      color: #c2410c;
+    }
+
+    .small-button.warning:hover {
+      background: #ffedd5;
+    }
+
+    .small-button.danger {
+      background: #fee2e2;
+      color: #b42318;
+    }
+
+    .small-button.danger:hover {
+      background: #fecaca;
+    }
+
     .empty-state {
       display: none;
       border: 1px dashed #cbd5e1;
@@ -420,6 +516,7 @@
 
     @media (max-width: 900px) {
       .stats,
+      .crm-toolbar,
       .chart-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
@@ -443,6 +540,7 @@
       }
 
       .stats,
+      .crm-toolbar,
       .chart-grid {
         grid-template-columns: 1fr;
       }
@@ -533,6 +631,41 @@
       </article>
     </section>
 
+    <section class="crm-toolbar" aria-label="CRM controls">
+      <div class="crm-control">
+        <label for="searchInput">Search leads</label>
+        <input id="searchInput" type="search" placeholder="Name, email, phone, message">
+      </div>
+      <div class="crm-control">
+        <label for="statusFilter">Status</label>
+        <select id="statusFilter">
+          <option value="">All statuses</option>
+          <option value="New">New</option>
+          <option value="Qualified">Qualified</option>
+          <option value="Contacted">Contacted</option>
+          <option value="Showing">Showing</option>
+          <option value="Closed">Closed</option>
+          <option value="Lost">Lost</option>
+        </select>
+      </div>
+      <div class="crm-control">
+        <label for="archiveFilter">Archive</label>
+        <select id="archiveFilter">
+          <option value="false">Active</option>
+          <option value="true">Archived</option>
+          <option value="all">All leads</option>
+        </select>
+      </div>
+      <div class="crm-control">
+        <label for="sortSelect">Sort</label>
+        <select id="sortSelect">
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+        </select>
+      </div>
+      <button id="clearFiltersButton" class="toolbar-button" type="button">Clear</button>
+    </section>
+
     <div class="status-line" id="status"></div>
 
     <section class="empty-state" id="emptyState">
@@ -553,7 +686,9 @@
             <th>AI confidence</th>
             <th>Booking</th>
             <th>AI response</th>
+            <th>Notes</th>
             <th>Email status</th>
+            <th>CRM actions</th>
             <th>Created</th>
           </tr>
         </thead>
@@ -592,6 +727,11 @@
     const refreshButton = document.getElementById("refreshButton");
     const logoutButton = document.getElementById("logoutButton");
     const agentSelect = document.getElementById("agentSelect");
+    const searchInput = document.getElementById("searchInput");
+    const statusFilter = document.getElementById("statusFilter");
+    const archiveFilter = document.getElementById("archiveFilter");
+    const sortSelect = document.getElementById("sortSelect");
+    const clearFiltersButton = document.getElementById("clearFiltersButton");
     const statusEl = document.getElementById("status");
     const leadCountEl = document.getElementById("leadCount");
     const leadRows = document.getElementById("leadRows");
@@ -612,6 +752,17 @@
     const eventsTableWrap = document.getElementById("eventsTableWrap");
     const eventsEmptyState = document.getElementById("eventsEmptyState");
     const eventsMeta = document.getElementById("eventsMeta");
+    const crmStatuses = ["New", "Qualified", "Contacted", "Showing", "Closed", "Lost"];
+    const statusClassMap = {
+      New: "status-new",
+      Qualified: "status-qualified",
+      Contacted: "status-contacted",
+      Showing: "status-showing_requested",
+      Closed: "status-booked",
+      Lost: "status-needs_handoff"
+    };
+    let currentLeads = [];
+    let searchTimer = null;
 
     function formatDate(value) {
       if (!value) {
@@ -638,12 +789,23 @@
     }
 
     function cleanStatus(value) {
-      const allowed = ["new", "contacted", "qualified", "showing_requested", "booked", "needs_handoff"];
-      return allowed.includes(value) ? value : "new";
+      const normalized = String(value || "").toLowerCase();
+      return crmStatuses.find((status) => status.toLowerCase() === normalized) || "New";
     }
 
     function labelStatus(value) {
-      return cleanStatus(value).replace(/_/g, " ");
+      return cleanStatus(value);
+    }
+
+    function statusClass(value) {
+      return statusClassMap[cleanStatus(value)] || "status-new";
+    }
+
+    function statusOptions(selectedStatus) {
+      const selected = cleanStatus(selectedStatus);
+      return crmStatuses.map((status) => {
+        return `<option value="${status}" ${status === selected ? "selected" : ""}>${status}</option>`;
+      }).join("");
     }
 
     function yesNo(value) {
@@ -665,7 +827,7 @@
     }
 
     function countByStatus(leads, status) {
-      return leads.filter((lead) => cleanStatus(lead.leadStatus || lead.status) === status).length;
+      return leads.filter((lead) => cleanStatus(lead.crmStatus || lead.leadStatus || lead.status) === status).length;
     }
 
     function countAiResponses(leads) {
@@ -715,9 +877,25 @@
       return agentSelect.value || getAgentIdFromUrl();
     }
 
-    function buildAgentUrl(path) {
+    function getLeadFilters() {
+      return {
+        search: searchInput.value.trim(),
+        status: statusFilter.value,
+        archived: archiveFilter.value,
+        sort: sortSelect.value
+      };
+    }
+
+    function buildAgentUrl(path, extraParams = {}) {
       const params = new URLSearchParams({
-        agentId: getSelectedAgentId()
+        agentId: getSelectedAgentId(),
+        ...extraParams
+      });
+
+      Array.from(params.entries()).forEach(([key, value]) => {
+        if (value === undefined || value === null || value === "") {
+          params.delete(key);
+        }
       });
 
       return `${path}?${params.toString()}`;
@@ -765,7 +943,7 @@
       totalLeadsEl.textContent = totals.totalLeads ?? leads.length;
       totalAiResponsesEl.textContent = totals.totalAiResponses ?? countAiResponses(leads);
       showingRequestedEl.textContent = totals.showingRequests ?? countShowingRequests(leads);
-      bookedLeadsEl.textContent = totals.bookedLeads ?? countByStatus(leads, "booked");
+      bookedLeadsEl.textContent = totals.bookedLeads ?? countByStatus(leads, "Closed");
       qualifiedLeadsEl.textContent = totals.qualifiedLeads ?? countByStatus(leads, "qualified");
       averageResponseTimeEl.textContent = performance.averageResponseTimeLabel || "N/A";
       responseSuccessRateEl.textContent = performance.responseSuccessRateLabel || "0%";
@@ -784,19 +962,29 @@
 
     function renderLeads(leads, metrics) {
       leadRows.innerHTML = "";
+      currentLeads = leads;
       renderStats(leads, metrics);
       renderEmptyState(leads);
 
       leads.forEach((lead) => {
-        const leadStatus = cleanStatus(lead.leadStatus || lead.status);
+        const leadStatus = cleanStatus(lead.crmStatus || lead.leadStatus || lead.status);
+        const latestNote = lead.latestNote ? lead.latestNote.body : "";
         const row = document.createElement("tr");
         row.innerHTML = `
           <td>
             <div class="lead-name">${escapeHtml(lead.name)}</div>
             <div class="lead-subtext">${escapeHtml(lead.email)}</div>
             <div class="lead-subtext">${escapeHtml(lead.phone)}</div>
+            ${lead.archived ? '<div class="lead-subtext">Archived</div>' : ""}
           </td>
-          <td><span class="pill status-pill status-${leadStatus}">${escapeHtml(labelStatus(leadStatus))}</span></td>
+          <td>
+            <div class="stack">
+              <span class="pill status-pill ${statusClass(leadStatus)}">${escapeHtml(labelStatus(leadStatus))}</span>
+              <select class="status-select" data-action="status" data-lead-id="${lead.id}">
+                ${statusOptions(leadStatus)}
+              </select>
+            </div>
+          </td>
           <td><span class="pill">${escapeHtml(lead.source)}</span></td>
           <td class="message">${escapeHtml(lead.latestMessage)}</td>
           <td>${escapeHtml(lead.aiIntent)}</td>
@@ -812,8 +1000,22 @@
           <td class="response">${escapeHtml(lead.aiResponse)}</td>
           <td>
             <div class="stack">
+              <div class="note-preview">${escapeHtml(latestNote || "No notes yet.")}</div>
+              <span class="lead-subtext">${lead.notesCount || 0} note${lead.notesCount === 1 ? "" : "s"}</span>
+            </div>
+          </td>
+          <td>
+            <div class="stack">
               <span class="pill ${lead.emailSent ? "yes" : "no"}">Customer: ${yesNo(lead.emailSent)}</span>
               <span class="pill ${lead.agentNotificationSent ? "yes" : "no"}">Agent: ${yesNo(lead.agentNotificationSent)}</span>
+            </div>
+          </td>
+          <td>
+            <div class="row-actions">
+              <button class="small-button neutral" type="button" data-action="edit" data-lead-id="${lead.id}">Edit</button>
+              <button class="small-button neutral" type="button" data-action="note" data-lead-id="${lead.id}">Note</button>
+              <button class="small-button warning" type="button" data-action="archive" data-lead-id="${lead.id}">${lead.archived ? "Unarchive" : "Archive"}</button>
+              <button class="small-button danger" type="button" data-action="delete" data-lead-id="${lead.id}">Delete</button>
             </div>
           </td>
           <td>${formatDate(lead.createdAt)}</td>
@@ -840,6 +1042,153 @@
       });
     }
 
+    function getLeadById(leadId) {
+      return currentLeads.find((lead) => String(lead.id) === String(leadId));
+    }
+
+    async function sendLeadUpdate(leadId, data) {
+      const response = await fetch(`/api/leads/${leadId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(data)
+      });
+
+      if (!response.ok) {
+        throw new Error("Lead update failed");
+      }
+
+      return response.json();
+    }
+
+    async function editLead(leadId) {
+      const lead = getLeadById(leadId);
+
+      if (!lead) {
+        return;
+      }
+
+      const name = window.prompt("Lead name", lead.name);
+
+      if (name === null) {
+        return;
+      }
+
+      const email = window.prompt("Lead email", lead.email);
+
+      if (email === null) {
+        return;
+      }
+
+      const phone = window.prompt("Lead phone", lead.phone);
+
+      if (phone === null) {
+        return;
+      }
+
+      const message = window.prompt("Latest message", lead.latestMessage);
+
+      if (message === null) {
+        return;
+      }
+
+      await sendLeadUpdate(leadId, {
+        name,
+        email,
+        phone,
+        message
+      });
+      statusEl.className = "status-line";
+      statusEl.textContent = "Lead updated.";
+      await loadLeads();
+    }
+
+    async function addNote(leadId) {
+      const note = window.prompt("Add note");
+
+      if (note === null || note.trim() === "") {
+        return;
+      }
+
+      const response = await fetch(`/api/leads/${leadId}/notes`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          body: note.trim()
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error("Note creation failed");
+      }
+
+      statusEl.className = "status-line";
+      statusEl.textContent = "Note added.";
+      await loadLeads();
+    }
+
+    async function archiveLead(leadId) {
+      const lead = getLeadById(leadId);
+
+      if (!lead) {
+        return;
+      }
+
+      await sendLeadUpdate(leadId, {
+        archived: !lead.archived
+      });
+      statusEl.className = "status-line";
+      statusEl.textContent = lead.archived ? "Lead unarchived." : "Lead archived.";
+      await loadLeads();
+    }
+
+    async function deleteLead(leadId) {
+      const lead = getLeadById(leadId);
+      const label = lead ? `${lead.name} (${lead.email})` : "this lead";
+
+      if (!window.confirm(`Delete ${label}? This cannot be undone.`)) {
+        return;
+      }
+
+      const response = await fetch(`/api/leads/${leadId}`, {
+        method: "DELETE"
+      });
+
+      if (!response.ok) {
+        throw new Error("Lead deletion failed");
+      }
+
+      statusEl.className = "status-line";
+      statusEl.textContent = "Lead deleted.";
+      await loadLeads();
+    }
+
+    async function handleLeadAction(action, leadId) {
+      try {
+        if (action === "edit") {
+          await editLead(leadId);
+        }
+
+        if (action === "note") {
+          await addNote(leadId);
+        }
+
+        if (action === "archive") {
+          await archiveLead(leadId);
+        }
+
+        if (action === "delete") {
+          await deleteLead(leadId);
+        }
+      } catch (error) {
+        statusEl.className = "status-line error";
+        statusEl.textContent = "CRM action failed.";
+      }
+    }
+
     async function loadLeads() {
       refreshButton.disabled = true;
       refreshButton.textContent = "Refreshing...";
@@ -848,7 +1197,7 @@
 
       try {
         const [leadsResponse, eventsResponse, metricsResponse] = await Promise.all([
-          fetch(buildAgentUrl("/api/leads")),
+          fetch(buildAgentUrl("/api/leads", getLeadFilters())),
           fetch(buildAgentUrl("/api/events")),
           fetch(buildAgentUrl("/api/metrics"))
         ]);
@@ -875,6 +1224,53 @@
     }
 
     refreshButton.addEventListener("click", loadLeads);
+    leadRows.addEventListener("click", (event) => {
+      const button = event.target.closest("button[data-action]");
+
+      if (!button) {
+        return;
+      }
+
+      handleLeadAction(button.dataset.action, button.dataset.leadId);
+    });
+    leadRows.addEventListener("change", async (event) => {
+      const select = event.target.closest("select[data-action='status']");
+
+      if (!select) {
+        return;
+      }
+
+      try {
+        await sendLeadUpdate(select.dataset.leadId, {
+          crmStatus: select.value
+        });
+        statusEl.className = "status-line";
+        statusEl.textContent = "Lead status updated.";
+        await loadLeads();
+      } catch (error) {
+        statusEl.className = "status-line error";
+        statusEl.textContent = "Could not update status.";
+      }
+    });
+    [statusFilter, archiveFilter, sortSelect].forEach((control) => {
+      control.addEventListener("change", loadLeads);
+    });
+    searchInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        loadLeads();
+      }
+    });
+    searchInput.addEventListener("input", () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(loadLeads, 350);
+    });
+    clearFiltersButton.addEventListener("click", () => {
+      searchInput.value = "";
+      statusFilter.value = "";
+      archiveFilter.value = "false";
+      sortSelect.value = "newest";
+      loadLeads();
+    });
     logoutButton.addEventListener("click", async () => {
       logoutButton.disabled = true;
       logoutButton.textContent = "Logging out...";
