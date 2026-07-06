@@ -4,7 +4,15 @@ const { createAgent, listAgents } = require("../services/agentService");
 async function getAgents(req, res) {
   try {
     const prisma = getPrismaClient();
-    const agents = await listAgents(prisma);
+    const agents = req.auth && req.auth.agentId
+      ? [
+          await prisma.agent.findUnique({
+            where: {
+              id: req.auth.agentId
+            }
+          })
+        ].filter(Boolean)
+      : await listAgents(prisma);
 
     return res.json({
       agents

@@ -46,20 +46,24 @@ function loadEnvFile() {
 loadEnvFile();
 
 const testRoutes = require("./routes/test");
+const authRoutes = require("./routes/auth");
 const leadsRoutes = require("./routes/leads");
 const settingsRoutes = require("./routes/settings");
 const eventsRoutes = require("./routes/events");
 const agentsRoutes = require("./routes/agents");
 const metricsRoutes = require("./routes/metrics");
+const { loadAuth, redirectIfAuthenticated, requirePageAuth } = require("./middleware/authMiddleware");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // This lets Express read JSON request bodies like req.body.
 app.use(express.json());
+app.use(loadAuth);
 
 // Each route file owns one small part of the API.
 app.use("/api/test", testRoutes);
+app.use("/api/auth", authRoutes);
 app.use("/api/leads", leadsRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/events", eventsRoutes);
@@ -79,13 +83,22 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(process.cwd(), "index.html"));
 });
 
+// Show authentication pages for account access.
+app.get("/login", redirectIfAuthenticated, (req, res) => {
+  res.sendFile(path.join(process.cwd(), "login.html"));
+});
+
+app.get("/signup", redirectIfAuthenticated, (req, res) => {
+  res.sendFile(path.join(process.cwd(), "signup.html"));
+});
+
 // Show the lightweight internal lead dashboard.
-app.get("/dashboard", (req, res) => {
+app.get("/dashboard", requirePageAuth, (req, res) => {
   res.sendFile(path.join(process.cwd(), "dashboard.html"));
 });
 
 // Show the basic agent settings form.
-app.get("/settings", (req, res) => {
+app.get("/settings", requirePageAuth, (req, res) => {
   res.sendFile(path.join(process.cwd(), "settings.html"));
 });
 

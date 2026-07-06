@@ -1,5 +1,6 @@
 const express = require("express");
 const { createLead, listLeads } = require("../controllers/leadsController");
+const { requireApiAuth } = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
@@ -7,6 +8,6 @@ const router = express.Router();
 router.post("/", createLead);
 
 // GET /api/leads returns recent leads for the dashboard.
-router.get("/", listLeads);
+router.get("/", requireApiAuth, listLeads);
 
 module.exports = router;

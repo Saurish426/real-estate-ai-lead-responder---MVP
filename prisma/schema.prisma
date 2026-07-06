@@ -8,9 +8,31 @@ datasource db {
 
 // A user can represent an owner, admin, or future team member in the app.
 model User {
-  id    Int    @id @default(autoincrement())
-  name  String
-  email String @unique
+  id           Int       @id @default(autoincrement())
+  agentId      Int?
+  name         String
+  email        String    @unique
+  passwordHash String    @default("")
+  passwordSalt String    @default("")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  agent        Agent?    @relation(fields: [agentId], references: [id])
+  sessions     Session[]
+
+  @@index([agentId])
+}
+
+// A session stores a hashed login token for a user.
+model Session {
+  id        String   @id
+  tokenHash String   @unique
+  userId    Int
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 // An agent owns leads, conversations, and settings. Auth can be added later.
@@ -25,6 +47,7 @@ model Agent {
   leads        Lead[]
   conversations Conversation[]
   settings     AgentSettings?
+  users        User[]
 }
 
 // A lead is a potential real estate client who contacts the business.

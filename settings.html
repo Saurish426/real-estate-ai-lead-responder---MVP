@@ -67,6 +67,12 @@
       white-space: nowrap;
     }
 
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
     .grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -131,6 +137,16 @@
       transform: translateY(-1px);
     }
 
+    .secondary-button {
+      background: #f1f5f9;
+      color: #334155;
+      padding: 10px 14px;
+    }
+
+    .secondary-button:hover {
+      background: #e2e8f0;
+    }
+
     button:disabled {
       cursor: wait;
       opacity: 0.72;
@@ -158,6 +174,7 @@
       }
 
       .header,
+      .header-actions,
       .actions {
         align-items: stretch;
         flex-direction: column;
@@ -181,7 +198,10 @@
           <h1>Agent Settings</h1>
           <p class="subtitle">Save the business details the AI can use when writing lead replies.</p>
         </div>
-        <a class="link" href="/dashboard">Dashboard</a>
+        <div class="header-actions">
+          <a class="link" href="/dashboard">Dashboard</a>
+          <button id="logoutButton" class="secondary-button" type="button">Logout</button>
+        </div>
       </div>
 
       <form id="settingsForm">
@@ -233,6 +253,7 @@
   <script>
     const form = document.getElementById("settingsForm");
     const saveButton = document.getElementById("saveButton");
+    const logoutButton = document.getElementById("logoutButton");
     const statusEl = document.getElementById("status");
 
     function setStatus(message, type) {
@@ -306,6 +327,19 @@
       } finally {
         saveButton.disabled = false;
         saveButton.textContent = "Save Settings";
+      }
+    });
+
+    logoutButton.addEventListener("click", async () => {
+      logoutButton.disabled = true;
+      logoutButton.textContent = "Logging out...";
+
+      try {
+        await fetch("/api/auth/logout", {
+          method: "POST"
+        });
+      } finally {
+        window.location.href = "/login";
       }
     });
 

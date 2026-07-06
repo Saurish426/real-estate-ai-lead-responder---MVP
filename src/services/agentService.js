@@ -18,6 +18,10 @@ function parseAgentId(value) {
 }
 
 function getAgentIdFromRequest(req) {
+  if (req.auth && req.auth.agentId) {
+    return parseAgentId(req.auth.agentId);
+  }
+
   return parseAgentId(
     (req.body && req.body.agentId) ||
       (req.query && req.query.agentId) ||

@@ -468,6 +468,7 @@
           <select id="agentSelect"></select>
         </div>
         <button id="refreshButton" type="button">Refresh</button>
+        <button id="logoutButton" type="button">Logout</button>
       </div>
     </div>
 
@@ -589,6 +590,7 @@
 
   <script>
     const refreshButton = document.getElementById("refreshButton");
+    const logoutButton = document.getElementById("logoutButton");
     const agentSelect = document.getElementById("agentSelect");
     const statusEl = document.getElementById("status");
     const leadCountEl = document.getElementById("leadCount");
@@ -873,6 +875,19 @@
     }
 
     refreshButton.addEventListener("click", loadLeads);
+    logoutButton.addEventListener("click", async () => {
+      logoutButton.disabled = true;
+      logoutButton.textContent = "Logging out...";
+
+      try {
+        await fetch("/api/auth/logout", {
+          method: "POST"
+        });
+      } finally {
+        window.location.href = "/login";
+      }
+    });
+
     agentSelect.addEventListener("change", () => {
       updateAgentUrl();
       loadLeads();

@@ -1,7 +1,10 @@
 const express = require("express");
 const { getAgents, postAgent } = require("../controllers/agentsController");
+const { requireApiAuth } = require("../middleware/authMiddleware");
 
 const router = express.Router();
+
+router.use(requireApiAuth);
 
 // GET /api/agents returns available agents for the dashboard filter.
 router.get("/", getAgents);
