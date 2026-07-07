@@ -1,20 +1,17 @@
 const { getPrismaClient } = require("../db");
 const { createAgent, listAgents } = require("../services/agentService");
+const { getOfficeIdFromRequest, getOfficeOrDefault } = require("../services/officeService");
 
 async function getAgents(req, res) {
   try {
     const prisma = getPrismaClient();
-    const agents = req.auth && req.auth.agentId
-      ? [
-          await prisma.agent.findUnique({
-            where: {
-              id: req.auth.agentId
-            }
-          })
-        ].filter(Boolean)
-      : await listAgents(prisma);
+    const office = await getOfficeOrDefault(prisma, getOfficeIdFromRequest(req));
+    const agents = await listAgents(prisma, {
+      officeId: office.id
+    });
 
     return res.json({
+      office,
       agents
     });
   } catch (error) {
@@ -33,9 +30,11 @@ async function getAgents(req, res) {
 async function postAgent(req, res) {
   try {
     const prisma = getPrismaClient();
-    const agent = await createAgent(prisma, req.body);
+    const office = await getOfficeOrDefault(prisma, getOfficeIdFromRequest(req));
+    const agent = await createAgent(prisma, req.body, office.id);
 
     return res.status(201).json({
+      office,
       agent
     });
   } catch (error) {

@@ -189,8 +189,14 @@ function formatAiIntelligence(aiIntelligence) {
 
 function getAgentNotificationRecipient(agentSettings) {
   const settingsEmail = agentSettings && typeof agentSettings.agentEmail === "string" ? agentSettings.agentEmail.trim() : "";
+  const officeEmail =
+    agentSettings &&
+    agentSettings.office &&
+    typeof agentSettings.office.officeEmail === "string"
+      ? agentSettings.office.officeEmail.trim()
+      : "";
   const fallbackEmail = process.env.EMAIL_FROM || "";
-  return settingsEmail || fallbackEmail;
+  return settingsEmail || officeEmail || fallbackEmail;
 }
 
 function buildAgentNotificationBody({
@@ -209,6 +215,7 @@ function buildAgentNotificationBody({
     `Lead email: ${cleanValue(lead.email)}`,
     `Lead phone: ${cleanValue(lead.phone)}`,
     `Source: ${cleanValue(lead.source)}`,
+    `Assigned agent ID: ${cleanValue(lead.assignedAgentId)}`,
     `Created at: ${formatCreatedAt(lead.createdAt)}`,
     "",
     "Original message:",

@@ -1,6 +1,6 @@
 # Real Estate AI Lead Responder MVP
 
-Node.js + Express MVP for capturing real estate leads, saving them to PostgreSQL with Prisma, sending email replies, extracting lead intent with OpenAI, scoring leads, detecting sentiment and urgency, generating AI response drafts, storing long-term conversation memory, scheduling follow-up reminders, and viewing leads/settings in simple web pages.
+Node.js + Express MVP for capturing real estate leads, saving them to PostgreSQL with Prisma, sending email replies, extracting lead intent with OpenAI, scoring leads, detecting sentiment and urgency, generating AI response drafts, storing long-term conversation memory, scheduling follow-up reminders, supporting office teams, and viewing leads/settings in simple web pages.
 
 ## Requirements
 
@@ -166,6 +166,33 @@ curl -X POST http://localhost:3000/api/settings \
   -H "Content-Type: application/json" \
   -d "{\"agentName\":\"Your Name\",\"agentEmail\":\"you@example.com\",\"agentPhone\":\"555-123-4567\",\"businessName\":\"Your Realty Team\",\"calendarLink\":\"https://calendly.com/your-link\",\"preferredReplyTone\":\"friendly and professional\"}"
 ```
+
+Get office settings:
+
+```bash
+curl http://localhost:3000/api/office
+```
+
+Save office settings:
+
+```bash
+curl -X POST http://localhost:3000/api/office \
+  -H "Content-Type: application/json" \
+  -d "{\"name\":\"Downtown Office\",\"officeEmail\":\"team@example.com\",\"brandName\":\"Your Realty Team\",\"primaryColor\":\"#2563eb\",\"secondaryColor\":\"#0f172a\",\"websiteUrl\":\"https://example.com\"}"
+```
+
+## Team Features
+
+The app now has a future-ready team structure:
+
+- `Organization` is the parent model for future multi-organization support.
+- `Office` stores shared office settings, branding, office email, and website.
+- Agents belong to an office and can have team roles.
+- Leads belong to an office and can be assigned to a specific agent.
+- Dashboard defaults to the shared office view, with an optional agent filter.
+- Agent notifications use the agent email first, then office email, then `EMAIL_FROM`.
+
+This keeps the current single-office demo simple while preparing the codebase for multiple offices and organizations later.
 
 ## Website Lead Form Test
 

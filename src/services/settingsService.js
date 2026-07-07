@@ -3,6 +3,7 @@ const { DEFAULT_AGENT_ID } = require("./agentService");
 const SETTINGS_ID = 1;
 
 const DEFAULT_AGENT_SETTINGS = {
+  officeId: DEFAULT_AGENT_ID,
   agentName: "AI Lead Responder",
   agentEmail: "",
   agentPhone: "",
@@ -19,6 +20,7 @@ function withSafeDefaults(settings = {}) {
   return {
     id: settings.id || settings.agentId || SETTINGS_ID,
     agentId: settings.agentId || DEFAULT_AGENT_ID,
+    officeId: settings.officeId || DEFAULT_AGENT_ID,
     agentName: cleanSetting(settings.agentName) || DEFAULT_AGENT_SETTINGS.agentName,
     agentEmail: cleanSetting(settings.agentEmail) || DEFAULT_AGENT_SETTINGS.agentEmail,
     agentPhone: cleanSetting(settings.agentPhone) || DEFAULT_AGENT_SETTINGS.agentPhone,
@@ -53,16 +55,20 @@ async function getAgentSettings(prisma, agentId = DEFAULT_AGENT_ID) {
   return withSafeDefaults(settings || { agentId });
 }
 
-async function saveAgentSettings(prisma, input, agentId = DEFAULT_AGENT_ID) {
+async function saveAgentSettings(prisma, input, agentId = DEFAULT_AGENT_ID, officeId = DEFAULT_AGENT_ID) {
   const data = normalizeSettingsInput(input);
   const settings = await prisma.agentSettings.upsert({
     where: {
       agentId
     },
-    update: data,
+    update: {
+      officeId,
+      ...data
+    },
     create: {
       id: agentId,
       agentId,
+      officeId,
       ...data
     }
   });
@@ -72,13 +78,17 @@ async function saveAgentSettings(prisma, input, agentId = DEFAULT_AGENT_ID) {
 
 function formatAgentSettingsForPrompt(settings) {
   const safeSettings = withSafeDefaults(settings || {});
+  const office = settings && settings.office ? settings.office : null;
   const lines = [
     `Agent name: ${safeSettings.agentName}`,
     `Agent email: ${safeSettings.agentEmail || "not provided"}`,
     `Agent phone: ${safeSettings.agentPhone || "not provided"}`,
     `Business name: ${safeSettings.businessName}`,
     `Calendar link: ${safeSettings.calendarLink || "not provided"}`,
-    `Preferred reply tone: ${safeSettings.preferredReplyTone}`
+    `Preferred reply tone: ${safeSettings.preferredReplyTone}`,
+    `Office name: ${office && office.name ? office.name : "not provided"}`,
+    `Office brand: ${office && office.brandName ? office.brandName : "not provided"}`,
+    `Office email: ${office && office.officeEmail ? office.officeEmail : "not provided"}`
   ];
 
   return lines.join("\n");

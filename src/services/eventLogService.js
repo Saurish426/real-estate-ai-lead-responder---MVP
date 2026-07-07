@@ -55,12 +55,13 @@ function cleanEventMessage(message) {
   return truncateString(message.trim());
 }
 
-async function logEvent(prisma, { eventType, agentId = null, leadId = null, message, metadata = null }) {
+async function logEvent(prisma, { eventType, agentId = null, officeId = null, leadId = null, message, metadata = null }) {
   try {
     return await prisma.eventLog.create({
       data: {
         eventType,
         agentId,
+        officeId,
         leadId,
         message: cleanEventMessage(message),
         metadata: sanitizeMetadata(metadata)
@@ -70,6 +71,7 @@ async function logEvent(prisma, { eventType, agentId = null, leadId = null, mess
     console.warn("Event logging failed:", {
       eventType,
       agentId,
+      officeId,
       leadId,
       message: error.message,
       code: error.code
@@ -79,13 +81,12 @@ async function logEvent(prisma, { eventType, agentId = null, leadId = null, mess
   }
 }
 
-async function listRecentEvents(prisma, { agentId = null, take = 50 } = {}) {
+async function listRecentEvents(prisma, { agentId = null, officeId = null, take = 50 } = {}) {
   return prisma.eventLog.findMany({
-    where: agentId
-      ? {
-          agentId
-        }
-      : undefined,
+    where: {
+      ...(officeId ? { officeId } : {}),
+      ...(agentId ? { agentId } : {})
+    },
     orderBy: {
       createdAt: "desc"
     },

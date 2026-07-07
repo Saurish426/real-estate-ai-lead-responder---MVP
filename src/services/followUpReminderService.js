@@ -62,6 +62,7 @@ async function scheduleFollowUpReminder(prisma, { lead, conversation = null, boo
   const reminder = await prisma.followUpReminder.create({
     data: {
       agentId: lead.agentId || 1,
+      officeId: lead.officeId || 1,
       leadId: lead.id,
       conversationId: conversation && conversation.id ? conversation.id : null,
       reminderType: getReminderType({

@@ -52,6 +52,7 @@ const settingsRoutes = require("./routes/settings");
 const eventsRoutes = require("./routes/events");
 const agentsRoutes = require("./routes/agents");
 const metricsRoutes = require("./routes/metrics");
+const officeRoutes = require("./routes/office");
 const { loadAuth, redirectIfAuthenticated, requirePageAuth } = require("./middleware/authMiddleware");
 
 const app = express();
@@ -69,6 +70,7 @@ app.use("/api/settings", settingsRoutes);
 app.use("/api/events", eventsRoutes);
 app.use("/api/agents", agentsRoutes);
 app.use("/api/metrics", metricsRoutes);
+app.use("/api/office", officeRoutes);
 
 // Deployment platforms can call this route to confirm the app is alive.
 app.get("/health", (req, res) => {

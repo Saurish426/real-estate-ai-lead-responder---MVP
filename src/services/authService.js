@@ -1,5 +1,6 @@
 const crypto = require("crypto");
 const { promisify } = require("util");
+const { DEFAULT_OFFICE_ID, ensureDefaultOffice } = require("./officeService");
 
 const scrypt = promisify(crypto.scrypt);
 const SESSION_COOKIE_NAME = "ai_lead_session";
@@ -30,6 +31,7 @@ function getSafeUser(user) {
   return {
     id: user.id,
     agentId: user.agentId,
+    officeId: user.officeId || DEFAULT_OFFICE_ID,
     name: user.name,
     email: user.email
   };
@@ -189,8 +191,11 @@ async function signUpUser(prisma, { name, email, password }) {
   const { hash, salt } = await hashPassword(password);
 
   return prisma.$transaction(async (tx) => {
+    await ensureDefaultOffice(tx);
+
     const agent = await tx.agent.create({
       data: {
+        officeId: DEFAULT_OFFICE_ID,
         name: cleanName,
         email: cleanEmail,
         businessName: `${cleanName}'s Realty Team`
@@ -202,7 +207,8 @@ async function signUpUser(prisma, { name, email, password }) {
         email: cleanEmail,
         passwordHash: hash,
         passwordSalt: salt,
-        agentId: agent.id
+        agentId: agent.id,
+        officeId: DEFAULT_OFFICE_ID
       }
     });
 

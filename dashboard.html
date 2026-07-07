@@ -54,6 +54,27 @@
       gap: 12px;
     }
 
+    .office-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+      border: 1px solid #dbe3ef;
+      border-radius: 999px;
+      background: #ffffff;
+      color: #334155;
+      font-size: 13px;
+      font-weight: 800;
+      padding: 7px 11px;
+    }
+
+    .brand-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: #2563eb;
+    }
+
     .agent-filter {
       display: flex;
       align-items: center;
@@ -564,6 +585,10 @@
       <div>
         <h1>Lead Dashboard</h1>
         <p class="meta" id="leadCount">Recent leads and AI follow-up status</p>
+        <div class="office-chip" id="officeChip">
+          <span class="brand-dot" id="brandDot"></span>
+          <span id="officeName">Demo Office</span>
+        </div>
       </div>
       <div class="actions">
         <a class="nav-link" href="/demo">Demo</a>
@@ -740,6 +765,8 @@
     const archiveFilter = document.getElementById("archiveFilter");
     const sortSelect = document.getElementById("sortSelect");
     const clearFiltersButton = document.getElementById("clearFiltersButton");
+    const officeNameEl = document.getElementById("officeName");
+    const brandDot = document.getElementById("brandDot");
     const statusEl = document.getElementById("status");
     const leadCountEl = document.getElementById("leadCount");
     const leadRows = document.getElementById("leadRows");
@@ -770,7 +797,9 @@
       Lost: "status-needs_handoff"
     };
     let currentLeads = [];
+    let currentAgents = [];
     let searchTimer = null;
+    let currentOffice = null;
 
     function formatDate(value) {
       if (!value) {
@@ -887,7 +916,7 @@
 
     function getAgentIdFromUrl() {
       const params = new URLSearchParams(window.location.search);
-      return params.get("agentId") || "1";
+      return params.get("agentId") || "all";
     }
 
     function getSelectedAgentId() {
@@ -924,19 +953,32 @@
       window.history.replaceState({}, "", url);
     }
 
-    function renderAgents(agents) {
+    function renderOffice(office) {
+      currentOffice = office || null;
+      officeNameEl.textContent = office && office.brandName ? `${office.brandName} - ${office.name}` : "Demo Office";
+      brandDot.style.background = office && office.primaryColor ? office.primaryColor : "#2563eb";
+    }
+
+    function renderAgents(agents, office) {
       agentSelect.innerHTML = "";
+      currentAgents = agents;
+      renderOffice(office);
+
+      const allOption = document.createElement("option");
+      allOption.value = "all";
+      allOption.textContent = "All team";
+      agentSelect.appendChild(allOption);
 
       agents.forEach((agent) => {
         const option = document.createElement("option");
         option.value = String(agent.id);
-        option.textContent = agent.businessName ? `${agent.name} - ${agent.businessName}` : agent.name;
+        option.textContent = agent.teamRole ? `${agent.name} (${agent.teamRole})` : agent.name;
         agentSelect.appendChild(option);
       });
 
       const requestedAgentId = getAgentIdFromUrl();
       const hasRequestedAgent = agents.some((agent) => String(agent.id) === requestedAgentId);
-      agentSelect.value = hasRequestedAgent ? requestedAgentId : "1";
+      agentSelect.value = requestedAgentId === "all" || hasRequestedAgent ? requestedAgentId : "all";
       updateAgentUrl();
     }
 
@@ -948,7 +990,7 @@
       }
 
       const data = await response.json();
-      renderAgents(data.agents || []);
+      renderAgents(data.agents || [], data.office);
     }
 
     function renderStats(leads, metrics) {
@@ -992,6 +1034,7 @@
             <div class="lead-name">${escapeHtml(lead.name)}</div>
             <div class="lead-subtext">${escapeHtml(lead.email)}</div>
             <div class="lead-subtext">${escapeHtml(lead.phone)}</div>
+            <div class="lead-subtext">Assigned: ${escapeHtml(lead.assignedAgentName || lead.ownerAgentName || "Unassigned")}</div>
             ${lead.archived ? '<div class="lead-subtext">Archived</div>' : ""}
           </td>
           <td>
@@ -1043,6 +1086,7 @@
             <div class="row-actions">
               <button class="small-button neutral" type="button" data-action="edit" data-lead-id="${lead.id}">Edit</button>
               <button class="small-button neutral" type="button" data-action="note" data-lead-id="${lead.id}">Note</button>
+              <button class="small-button neutral" type="button" data-action="assign" data-lead-id="${lead.id}">Assign</button>
               <button class="small-button warning" type="button" data-action="archive" data-lead-id="${lead.id}">${lead.archived ? "Unarchive" : "Archive"}</button>
               <button class="small-button danger" type="button" data-action="delete" data-lead-id="${lead.id}">Delete</button>
             </div>
@@ -1159,6 +1203,31 @@
       await loadLeads();
     }
 
+    async function assignLead(leadId) {
+      const lead = getLeadById(leadId);
+
+      if (!lead) {
+        return;
+      }
+
+      const agentList = currentAgents.map((agent) => `${agent.id}: ${agent.name}`).join("\n");
+      const assignedAgentId = window.prompt(
+        `Assign to agent ID:\n${agentList}`,
+        lead.assignedAgentId || lead.agentId || ""
+      );
+
+      if (assignedAgentId === null) {
+        return;
+      }
+
+      await sendLeadUpdate(leadId, {
+        assignedAgentId: assignedAgentId.trim() || null
+      });
+      statusEl.className = "status-line";
+      statusEl.textContent = "Lead assignment updated.";
+      await loadLeads();
+    }
+
     async function archiveLead(leadId) {
       const lead = getLeadById(leadId);
 
@@ -1203,6 +1272,10 @@
 
         if (action === "note") {
           await addNote(leadId);
+        }
+
+        if (action === "assign") {
+          await assignLead(leadId);
         }
 
         if (action === "archive") {

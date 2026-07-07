@@ -8,8 +8,9 @@ async function loadAuth(req, res, next) {
 
     req.auth = user
       ? {
-          user: getSafeUser(user),
-          agentId: user.agentId || 1
+        user: getSafeUser(user),
+          agentId: user.agentId || 1,
+          officeId: user.officeId || 1
         }
       : null;
   } catch (error) {

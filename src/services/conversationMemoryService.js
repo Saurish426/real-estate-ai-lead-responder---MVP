@@ -96,11 +96,11 @@ function resolveConversationStatus({ aiResponse, bookingFlow }) {
   return aiResponse ? "ai_generated" : "lead_received";
 }
 
-async function findExistingLeadByEmail(prisma, email, agentId = 1) {
+async function findExistingLeadByEmail(prisma, email, agentId = 1, officeId = 1) {
   return prisma.lead.findFirst({
     where: {
       email,
-      agentId
+      officeId
     },
     orderBy: {
       createdAt: "asc"
@@ -109,7 +109,7 @@ async function findExistingLeadByEmail(prisma, email, agentId = 1) {
 }
 
 async function saveLeadForSubmission(prisma, lead) {
-  const existingLead = await findExistingLeadByEmail(prisma, lead.email, lead.agentId);
+  const existingLead = await findExistingLeadByEmail(prisma, lead.email, lead.agentId, lead.officeId);
 
   if (!existingLead) {
     const savedLead = await prisma.lead.create({
@@ -130,7 +130,9 @@ async function saveLeadForSubmission(prisma, lead) {
       name: lead.name,
       phone: lead.phone,
       message: lead.message,
-      source: lead.source
+      source: lead.source,
+      officeId: lead.officeId,
+      assignedAgentId: lead.assignedAgentId
     }
   });
 
@@ -176,6 +178,7 @@ async function updateConversationMemory(
   });
   const data = {
     agentId: lead.agentId || 1,
+    officeId: lead.officeId || 1,
     leadId: lead.id,
     lastMessage: aiResponse || incomingMessage,
     status: resolveConversationStatus({

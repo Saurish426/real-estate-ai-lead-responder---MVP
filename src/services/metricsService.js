@@ -192,28 +192,54 @@ function calculateResponseSuccessRate({ leads, events }) {
   };
 }
 
-async function getStartupMetrics(prisma, agentId) {
-  const [leads, conversations, events] = await Promise.all([
-    prisma.lead.findMany({
-      where: {
-        agentId
-      },
-      orderBy: {
-        createdAt: "desc"
-      }
-    }),
+function buildTeamWhere({ officeId, agentId = null }) {
+  return {
+    officeId,
+    ...(agentId
+      ? {
+          OR: [
+            {
+              agentId
+            },
+            {
+              assignedAgentId: agentId
+            }
+          ]
+        }
+      : {})
+  };
+}
+
+async function getStartupMetrics(prisma, { officeId, agentId = null }) {
+  const leadWhere = buildTeamWhere({
+    officeId,
+    agentId
+  });
+  const teamWhere = {
+    officeId,
+    ...(agentId ? { agentId } : {})
+  };
+  const leads = await prisma.lead.findMany({
+    where: leadWhere,
+    orderBy: {
+      createdAt: "desc"
+    }
+  });
+  const leadIds = leads.map((lead) => lead.id);
+  const [conversations, events] = await Promise.all([
     prisma.conversation.findMany({
       where: {
-        agentId
+        officeId,
+        leadId: {
+          in: leadIds
+        }
       },
       orderBy: {
         id: "desc"
       }
     }),
     prisma.eventLog.findMany({
-      where: {
-        agentId
-      },
+      where: teamWhere,
       orderBy: {
         createdAt: "asc"
       }

@@ -14,6 +14,7 @@ const {
 const { sendAgentLeadNotificationEmail, sendLeadReplyEmail } = require("../services/emailService");
 const { logEvent } = require("../services/eventLogService");
 const { scheduleFollowUpReminder } = require("../services/followUpReminderService");
+const { getOfficeIdFromRequest, getOfficeOrDefault } = require("../services/officeService");
 const { getAgentSettings } = require("../services/settingsService");
 const { normalizeLead } = require("../utils/normalizeLead");
 
@@ -49,6 +50,15 @@ function getArchiveFilter(value) {
 function getListLimit(value) {
   const limit = Number(value);
   return Number.isInteger(limit) && limit > 0 ? Math.min(limit, 100) : 50;
+}
+
+function getOptionalAgentFilter(value) {
+  if (!value || value === "all") {
+    return null;
+  }
+
+  const agentId = Number(value);
+  return Number.isInteger(agentId) && agentId > 0 ? agentId : null;
 }
 
 function buildLeadSearch(search) {
@@ -92,13 +102,14 @@ function buildLeadSearch(search) {
   ];
 }
 
-function buildLeadWhere({ agentId, query }) {
+function buildLeadWhere({ officeId, query }) {
   const where = {
-    agentId
+    officeId
   };
   const archived = getArchiveFilter(query.archived);
   const search = buildLeadSearch(query.search || query.q);
   const crmStatus = normalizeCrmStatus(query.status);
+  const agentId = getOptionalAgentFilter(query.agentId);
 
   if (archived !== undefined) {
     where.archived = archived;
@@ -108,8 +119,24 @@ function buildLeadWhere({ agentId, query }) {
     where.crmStatus = crmStatus;
   }
 
+  if (agentId) {
+    where.OR = [
+      {
+        agentId
+      },
+      {
+        assignedAgentId: agentId
+      }
+    ];
+  }
+
   if (search) {
-    where.OR = search;
+    where.AND = [
+      ...(where.AND || []),
+      {
+        OR: search
+      }
+    ];
   }
 
   return where;
@@ -144,11 +171,47 @@ function getSafeLeadUpdate(input = {}) {
     data.archived = input.archived === true;
   }
 
+  if (Object.prototype.hasOwnProperty.call(input, "assignedAgentId")) {
+    if (input.assignedAgentId === null || input.assignedAgentId === "" || input.assignedAgentId === "unassigned") {
+      data.assignedAgentId = null;
+    } else {
+      const assignedAgentId = Number(input.assignedAgentId);
+
+      if (!Number.isInteger(assignedAgentId) || assignedAgentId <= 0) {
+        const error = new Error("Invalid assigned agent id.");
+        error.statusCode = 400;
+        throw error;
+      }
+
+      data.assignedAgentId = assignedAgentId;
+    }
+  }
+
   return data;
 }
 
 function getNoteBody(input = {}) {
   return cleanString(input.body || input.note || input.message);
+}
+
+async function getAssignedAgentId(prisma, { officeId, input = {}, fallbackAgentId }) {
+  const requestedAgentId = Number(input.assignedAgentId || input.agentId);
+
+  if (Number.isInteger(requestedAgentId) && requestedAgentId > 0) {
+    const assignedAgent = await prisma.agent.findFirst({
+      where: {
+        id: requestedAgentId,
+        officeId,
+        isActive: true
+      }
+    });
+
+    if (assignedAgent) {
+      return assignedAgent.id;
+    }
+  }
+
+  return fallbackAgentId || null;
 }
 
 function formatAiExtractionSummary(aiExtraction) {
@@ -221,11 +284,16 @@ async function listLeads(req, res) {
   try {
     const prisma = getPrismaClient();
     const agent = await getAgentOrDefault(prisma, getAgentIdFromRequest(req));
+    const office = await getOfficeOrDefault(prisma, agent.officeId || getOfficeIdFromRequest(req));
     const leads = await prisma.lead.findMany({
       where: buildLeadWhere({
-        agentId: agent.id,
+        officeId: office.id,
         query: req.query || {}
       }),
+      include: {
+        assignedAgent: true,
+        agent: true
+      },
       orderBy: {
         createdAt: req.query && req.query.sort === "oldest" ? "asc" : "desc"
       },
@@ -233,7 +301,7 @@ async function listLeads(req, res) {
     });
     const conversations = await prisma.conversation.findMany({
       where: {
-        agentId: agent.id,
+        officeId: office.id,
         leadId: {
           in: leads.map((lead) => lead.id)
         }
@@ -244,7 +312,7 @@ async function listLeads(req, res) {
     });
     const notes = await prisma.leadNote.findMany({
       where: {
-        agentId: agent.id,
+        officeId: office.id,
         leadId: {
           in: leads.map((lead) => lead.id)
         }
@@ -270,6 +338,7 @@ async function listLeads(req, res) {
 
     return res.json({
       agent,
+      office,
       leads: leads.map((lead) => {
         const conversation = conversationByLeadId.get(lead.id) || null;
         const aiResponse = conversation ? conversation.lastMessage : null;
@@ -290,6 +359,10 @@ async function listLeads(req, res) {
         return {
           id: lead.id,
           agentId: lead.agentId,
+          officeId: lead.officeId,
+          assignedAgentId: lead.assignedAgentId,
+          assignedAgentName: lead.assignedAgent ? lead.assignedAgent.name : null,
+          ownerAgentName: lead.agent ? lead.agent.name : null,
           name: lead.name,
           email: lead.email,
           phone: lead.phone,
@@ -365,6 +438,7 @@ async function updateLead(req, res) {
 
     const prisma = getPrismaClient();
     const agent = await getAgentOrDefault(prisma, getAgentIdFromRequest(req));
+    const office = await getOfficeOrDefault(prisma, agent.officeId || getOfficeIdFromRequest(req));
     const data = getSafeLeadUpdate(req.body);
 
     if (Object.keys(data).length === 0) {
@@ -376,7 +450,7 @@ async function updateLead(req, res) {
     const existingLead = await prisma.lead.findFirst({
       where: {
         id: leadId,
-        agentId: agent.id
+        officeId: office.id
       }
     });
 
@@ -384,6 +458,22 @@ async function updateLead(req, res) {
       return res.status(404).json({
         error: "Lead not found."
       });
+    }
+
+    if (data.assignedAgentId) {
+      const assignedAgent = await prisma.agent.findFirst({
+        where: {
+          id: data.assignedAgentId,
+          officeId: office.id,
+          isActive: true
+        }
+      });
+
+      if (!assignedAgent) {
+        return res.status(400).json({
+          error: "Assigned agent must belong to this office."
+        });
+      }
     }
 
     const lead = await prisma.lead.update({
@@ -396,6 +486,7 @@ async function updateLead(req, res) {
     await logEvent(prisma, {
       eventType: "lead_crm_updated",
       agentId: agent.id,
+      officeId: office.id,
       leadId: lead.id,
       message: "Lead CRM fields updated.",
       metadata: {
@@ -438,10 +529,11 @@ async function deleteLead(req, res) {
 
     const prisma = getPrismaClient();
     const agent = await getAgentOrDefault(prisma, getAgentIdFromRequest(req));
+    const office = await getOfficeOrDefault(prisma, agent.officeId || getOfficeIdFromRequest(req));
     const existingLead = await prisma.lead.findFirst({
       where: {
         id: leadId,
-        agentId: agent.id
+        officeId: office.id
       }
     });
 
@@ -455,13 +547,13 @@ async function deleteLead(req, res) {
       prisma.conversation.deleteMany({
         where: {
           leadId,
-          agentId: agent.id
+          officeId: office.id
         }
       }),
       prisma.leadNote.deleteMany({
         where: {
           leadId,
-          agentId: agent.id
+          officeId: office.id
         }
       }),
       prisma.lead.delete({
@@ -474,6 +566,7 @@ async function deleteLead(req, res) {
     await logEvent(prisma, {
       eventType: "lead_deleted",
       agentId: agent.id,
+      officeId: office.id,
       leadId,
       message: "Lead deleted from CRM.",
       metadata: {
@@ -517,10 +610,11 @@ async function addLeadNote(req, res) {
 
     const prisma = getPrismaClient();
     const agent = await getAgentOrDefault(prisma, getAgentIdFromRequest(req));
+    const office = await getOfficeOrDefault(prisma, agent.officeId || getOfficeIdFromRequest(req));
     const existingLead = await prisma.lead.findFirst({
       where: {
         id: leadId,
-        agentId: agent.id
+        officeId: office.id
       }
     });
 
@@ -533,6 +627,7 @@ async function addLeadNote(req, res) {
     const note = await prisma.leadNote.create({
       data: {
         agentId: agent.id,
+        officeId: office.id,
         leadId,
         body
       }
@@ -541,6 +636,7 @@ async function addLeadNote(req, res) {
     await logEvent(prisma, {
       eventType: "lead_note_added",
       agentId: agent.id,
+      officeId: office.id,
       leadId,
       message: "Lead note added.",
       metadata: {
@@ -585,9 +681,17 @@ async function createLead(req, res) {
   try {
     const prisma = getPrismaClient();
     const agent = await getAgentOrDefault(prisma, getAgentIdFromRequest(req));
+    const office = await getOfficeOrDefault(prisma, agent.officeId || getOfficeIdFromRequest(req));
+    const assignedAgentId = await getAssignedAgentId(prisma, {
+      officeId: office.id,
+      input: req.body,
+      fallbackAgentId: agent.id
+    });
     const leadForAgent = {
       ...lead,
-      agentId: agent.id
+      agentId: agent.id,
+      officeId: office.id,
+      assignedAgentId
     };
 
     // Save a new lead, or update the existing lead when the same email returns.
@@ -597,11 +701,13 @@ async function createLead(req, res) {
     await logEvent(prisma, {
       eventType: "lead_created",
       agentId: savedLead.agentId,
+      officeId: savedLead.officeId,
       leadId: savedLead.id,
       message: isExistingLead ? "Existing lead updated from new submission." : "New lead created.",
       metadata: {
         source: savedLead.source,
-        isExistingLead
+        isExistingLead,
+        assignedAgentId: savedLead.assignedAgentId
       }
     });
 
@@ -635,6 +741,7 @@ async function createLead(req, res) {
         await logEvent(prisma, {
           eventType: "ai_extraction_success",
           agentId: savedLead.agentId,
+          officeId: savedLead.officeId,
           leadId: savedLead.id,
           message: "AI extraction completed.",
           metadata: {
@@ -654,6 +761,7 @@ async function createLead(req, res) {
       await logEvent(prisma, {
         eventType: "ai_extraction_failed",
         agentId: savedLead.agentId,
+        officeId: savedLead.officeId,
         leadId: savedLead.id,
         message: "AI extraction failed.",
         metadata: {
@@ -672,6 +780,10 @@ async function createLead(req, res) {
 
     try {
       agentSettings = await getAgentSettings(prisma, savedLead.agentId);
+      agentSettings = {
+        ...agentSettings,
+        office
+      };
     } catch (settingsError) {
       console.error("Lead was saved, but agent settings lookup failed. Safe defaults will be used:", {
         leadId: savedLead.id,
@@ -706,6 +818,7 @@ async function createLead(req, res) {
         await logEvent(prisma, {
           eventType: aiIntelligence.source === "openai" ? "ai_intelligence_success" : "ai_intelligence_fallback",
           agentId: savedLead.agentId,
+          officeId: savedLead.officeId,
           leadId: savedLead.id,
           message:
             aiIntelligence.source === "openai"
@@ -732,6 +845,7 @@ async function createLead(req, res) {
       await logEvent(prisma, {
         eventType: "ai_intelligence_failed",
         agentId: savedLead.agentId,
+        officeId: savedLead.officeId,
         leadId: savedLead.id,
         message: "AI intelligence failed.",
         metadata: {
@@ -748,6 +862,7 @@ async function createLead(req, res) {
         await logEvent(prisma, {
           eventType: "ai_response_failed",
           agentId: savedLead.agentId,
+          officeId: savedLead.officeId,
           leadId: savedLead.id,
           message: "AI response generation returned no response.",
           metadata: {
@@ -758,6 +873,7 @@ async function createLead(req, res) {
         await logEvent(prisma, {
           eventType: "ai_response_generated",
           agentId: savedLead.agentId,
+          officeId: savedLead.officeId,
           leadId: savedLead.id,
           message: "AI response generated.",
           metadata: {
@@ -777,6 +893,7 @@ async function createLead(req, res) {
           await logEvent(prisma, {
             eventType: "guardrail_blocked",
             agentId: savedLead.agentId,
+            officeId: savedLead.officeId,
             leadId: savedLead.id,
             message: "AI response blocked and replaced with safe fallback.",
             metadata: {
@@ -787,6 +904,7 @@ async function createLead(req, res) {
           await logEvent(prisma, {
             eventType: "guardrail_passed",
             agentId: savedLead.agentId,
+            officeId: savedLead.officeId,
             leadId: savedLead.id,
             message: "AI response passed guardrail checks.",
             metadata: {
@@ -812,6 +930,7 @@ async function createLead(req, res) {
       await logEvent(prisma, {
         eventType: "ai_response_failed",
         agentId: savedLead.agentId,
+        officeId: savedLead.officeId,
         leadId: savedLead.id,
         message: "AI response generation failed.",
         metadata: {
@@ -856,6 +975,7 @@ async function createLead(req, res) {
         await logEvent(prisma, {
           eventType: "calendar_event_created",
           agentId: savedLead.agentId,
+          officeId: savedLead.officeId,
           leadId: savedLead.id,
           message: "Google Calendar event created for showing follow-up.",
           metadata: {
@@ -889,6 +1009,7 @@ async function createLead(req, res) {
         await logEvent(prisma, {
           eventType: "calendar_event_skipped",
           agentId: savedLead.agentId,
+          officeId: savedLead.officeId,
           leadId: savedLead.id,
           message: "Google Calendar event creation skipped.",
           metadata: {
@@ -915,6 +1036,7 @@ async function createLead(req, res) {
       await logEvent(prisma, {
         eventType: "calendar_event_failed",
         agentId: savedLead.agentId,
+        officeId: savedLead.officeId,
         leadId: savedLead.id,
         message: "Google Calendar event creation failed.",
         metadata: {
@@ -942,6 +1064,7 @@ async function createLead(req, res) {
         await logEvent(prisma, {
           eventType: "follow_up_reminder_scheduled",
           agentId: savedLead.agentId,
+          officeId: savedLead.officeId,
           leadId: savedLead.id,
           message: "Follow-up reminder scheduled.",
           metadata: {
@@ -975,6 +1098,7 @@ async function createLead(req, res) {
         await logEvent(prisma, {
           eventType: "follow_up_reminder_skipped",
           agentId: savedLead.agentId,
+          officeId: savedLead.officeId,
           leadId: savedLead.id,
           message: "Follow-up reminder scheduling skipped.",
           metadata: {
@@ -997,6 +1121,7 @@ async function createLead(req, res) {
       await logEvent(prisma, {
         eventType: "follow_up_reminder_failed",
         agentId: savedLead.agentId,
+        officeId: savedLead.officeId,
         leadId: savedLead.id,
         message: "Follow-up reminder scheduling failed.",
         metadata: {
@@ -1016,6 +1141,7 @@ async function createLead(req, res) {
       await logEvent(prisma, {
         eventType: "email_auto_reply_sent",
         agentId: savedLead.agentId,
+        officeId: savedLead.officeId,
         leadId: savedLead.id,
         message: "Customer auto-reply email sent.",
         metadata: {
@@ -1032,6 +1158,7 @@ async function createLead(req, res) {
       await logEvent(prisma, {
         eventType: "email_auto_reply_failed",
         agentId: savedLead.agentId,
+        officeId: savedLead.officeId,
         leadId: savedLead.id,
         message: "Customer auto-reply email failed.",
         metadata: {
@@ -1060,6 +1187,7 @@ async function createLead(req, res) {
       await logEvent(prisma, {
         eventType: "agent_notification_sent",
         agentId: savedLead.agentId,
+        officeId: savedLead.officeId,
         leadId: savedLead.id,
         message: "Agent notification email sent.",
         metadata: {
@@ -1076,6 +1204,7 @@ async function createLead(req, res) {
       await logEvent(prisma, {
         eventType: "agent_notification_failed",
         agentId: savedLead.agentId,
+        officeId: savedLead.officeId,
         leadId: savedLead.id,
         message: "Agent notification email failed.",
         metadata: {
@@ -1106,6 +1235,7 @@ async function createLead(req, res) {
     return res.status(201).json({
       lead: savedLead,
       agent,
+      office,
       aiExtraction,
       aiIntelligence,
       aiResponse,
