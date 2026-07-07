@@ -301,7 +301,7 @@
 
     table {
       width: 100%;
-      min-width: 1760px;
+      min-width: 1960px;
       border-collapse: collapse;
     }
 
@@ -356,6 +356,13 @@
     .response {
       max-width: 300px;
       white-space: normal;
+    }
+
+    .intelligence-preview {
+      max-width: 250px;
+      color: #475569;
+      font-size: 13px;
+      line-height: 1.45;
     }
 
     .pill {
@@ -684,6 +691,7 @@
             <th>AI intent</th>
             <th>Wants showing</th>
             <th>AI confidence</th>
+            <th>AI intelligence</th>
             <th>Booking</th>
             <th>AI response</th>
             <th>Notes</th>
@@ -824,6 +832,15 @@
       }
 
       return `${Math.round(numericValue * 100)}%`;
+    }
+
+    function formatLeadScore(value) {
+      if (value === undefined || value === null || value === "") {
+        return "-";
+      }
+
+      const numericValue = Number(value);
+      return Number.isFinite(numericValue) ? `${Math.round(numericValue)}/100` : "-";
     }
 
     function countByStatus(leads, status) {
@@ -990,6 +1007,16 @@
           <td>${escapeHtml(lead.aiIntent)}</td>
           <td><span class="pill ${lead.wantsShowing ? "yes" : "no"}">${yesNo(lead.wantsShowing)}</span></td>
           <td>${escapeHtml(formatConfidence(lead.aiConfidence))}</td>
+          <td>
+            <div class="stack">
+              <span class="pill status-pill">${escapeHtml(formatLeadScore(lead.aiLeadScore))}</span>
+              <span class="pill">${escapeHtml(lead.aiLeadScoreLabel || "unscored")}</span>
+              <span class="pill">${escapeHtml(lead.aiSentiment || "neutral")}</span>
+              <span class="pill ${lead.aiUrgency === "high" ? "no" : "yes"}">Urgency: ${escapeHtml(lead.aiUrgency || "low")}</span>
+              <span class="lead-subtext">Lang: ${escapeHtml(lead.preferredLanguage || "en")}</span>
+              <div class="intelligence-preview">${escapeHtml(lead.followUpRecommendation || "No recommendation yet.")}</div>
+            </div>
+          </td>
           <td>
             <div class="stack">
               <span class="pill status-pill">${escapeHtml(lead.bookingStatus || "none")}</span>

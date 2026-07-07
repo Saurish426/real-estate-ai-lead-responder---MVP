@@ -64,6 +64,12 @@ model Lead {
   crmStatus String   @default("New")
   archived  Boolean  @default(false)
   aiExtraction Json?
+  aiIntelligence Json?
+  leadScore Int?
+  leadScoreLabel String?
+  sentiment String?
+  urgency String?
+  preferredLanguage String @default("en")
   emailSent Boolean @default(false)
   agentNotificationSent Boolean @default(false)
   createdAt DateTime @default(now())
@@ -76,6 +82,9 @@ model Lead {
   @@index([agentId])
   @@index([crmStatus])
   @@index([archived])
+  @@index([leadScore])
+  @@index([sentiment])
+  @@index([urgency])
 }
 
 // A LeadNote stores agent-entered CRM notes for a lead.
@@ -102,6 +111,8 @@ model Conversation {
   status           String
   messageCount     Int     @default(0)
   aiSummary        String?
+  longTermMemory   String?
+  followUpRecommendation String?
   bookingStatus    String  @default("none")
   bookingRequested Boolean @default(false)
   bookingLinkSent  Boolean @default(false)

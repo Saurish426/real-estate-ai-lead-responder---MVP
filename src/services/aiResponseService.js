@@ -50,11 +50,31 @@ function formatConversationMemory(conversationMemory) {
     `Previous message count: ${conversationMemory.messageCount || 0}`,
     `Previous status: ${conversationMemory.status}`,
     `Previous summary: ${conversationMemory.aiSummary || "none"}`,
+    `Long-term memory: ${conversationMemory.longTermMemory || "none"}`,
+    `Previous follow-up recommendation: ${conversationMemory.followUpRecommendation || "none"}`,
     `Previous last message: ${conversationMemory.lastMessage || "none"}`
   ].join("\n");
 }
 
-async function generateLeadResponse(lead, aiExtraction, conversationMemory, agentSettings) {
+function formatAiIntelligence(aiIntelligence) {
+  if (!aiIntelligence) {
+    return "No AI intelligence available yet.";
+  }
+
+  return [
+    `Lead score: ${aiIntelligence.leadScore ?? "unknown"}`,
+    `Score label: ${aiIntelligence.leadScoreLabel || "unknown"}`,
+    `Sentiment: ${aiIntelligence.sentiment || "neutral"}`,
+    `Urgency: ${aiIntelligence.urgency || "low"}`,
+    `Follow-up recommendation: ${aiIntelligence.followUpRecommendation || "none"}`,
+    `Recommended next action: ${aiIntelligence.recommendedNextAction || "none"}`,
+    `Preferred language: ${aiIntelligence.preferredLanguage || "en"}`,
+    `Response language: ${aiIntelligence.responseLanguage || aiIntelligence.preferredLanguage || "en"}`,
+    `Key facts: ${Array.isArray(aiIntelligence.keyFacts) ? aiIntelligence.keyFacts.join("; ") : "none"}`
+  ].join("\n");
+}
+
+async function generateLeadResponse(lead, aiExtraction, conversationMemory, agentSettings, aiIntelligence) {
   if (!process.env.OPENAI_API_KEY) {
     console.log("AI response generation skipped. Add OPENAI_API_KEY to .env to enable it.");
     return null;
@@ -72,16 +92,17 @@ async function generateLeadResponse(lead, aiExtraction, conversationMemory, agen
         {
           role: "system",
           content:
-            "Write a short, professional real estate lead reply. Use the saved agent and business settings when they are provided. Use the preferred tone, acknowledge the inquiry, and include one clear next question. If the lead wants a showing, ask: Would you like to schedule a showing? If a calendar link is provided, include it as Book here: [calendarLink], but say bookings are tentative until the agent confirms. Hand off to the agent if unsure. Keep it to 1 or 2 sentences. Do not invent property details, promise availability, confirm a showing, give legal advice, give mortgage or financial advice, use discriminatory or Fair Housing risky language, or pressure the lead aggressively."
+            "Write a short, professional real estate lead reply. Use saved agent settings, custom tone, AI intelligence, sentiment, urgency, and conversation memory. Reply in the response language when it is not English. Acknowledge the inquiry and include one clear next question or CTA. If the lead wants a showing, ask: Would you like to schedule a showing? If a calendar link is provided, include it as Book here: [calendarLink], but say bookings are tentative until the agent confirms. Hand off to the agent if unsure. Keep it to 1 or 2 sentences. Do not invent property details, promise availability, confirm a showing, give legal advice, give mortgage or financial advice, use discriminatory or Fair Housing risky language, or pressure the lead aggressively."
         },
         {
           role: "user",
           content: [
             `Lead message: ${lead.message}`,
             `AI extraction: ${JSON.stringify(aiExtraction || {})}`,
+            `AI intelligence:\n${formatAiIntelligence(aiIntelligence)}`,
             `Conversation memory: ${formatConversationMemory(conversationMemory)}`,
             `Agent settings:\n${formatAgentSettingsForPrompt(agentSettings)}`,
-            "If the lead wants a showing, ask for their preferred showing time. If details are missing, ask one useful follow-up question."
+            "Use the preferred reply tone from settings. If urgency is high, sound prompt but not pushy. If sentiment is negative or mixed, acknowledge calmly. If details are missing, ask one useful follow-up question."
           ].join("\n")
         }
       ],

@@ -8,16 +8,26 @@ function isDisabled(value) {
   return String(value || "").toLowerCase() === "false";
 }
 
-function getDelayHours() {
+function getDelayHours(aiIntelligence) {
+  const intelligenceDelay = Number(aiIntelligence && aiIntelligence.followUpDelayHours);
   const delayHours = Number(process.env.FOLLOW_UP_REMINDER_DELAY_HOURS);
+
+  if (Number.isFinite(intelligenceDelay) && intelligenceDelay > 0) {
+    return Math.min(Math.round(intelligenceDelay), 168);
+  }
+
   return Number.isFinite(delayHours) && delayHours > 0 ? delayHours : DEFAULT_REMINDER_DELAY_HOURS;
 }
 
-function getScheduledFor() {
-  return new Date(Date.now() + getDelayHours() * 60 * 60 * 1000);
+function getScheduledFor(aiIntelligence) {
+  return new Date(Date.now() + getDelayHours(aiIntelligence) * 60 * 60 * 1000);
 }
 
-function buildReminderMessage({ lead, bookingFlow }) {
+function buildReminderMessage({ lead, bookingFlow, aiIntelligence }) {
+  if (aiIntelligence && aiIntelligence.followUpRecommendation) {
+    return aiIntelligence.followUpRecommendation;
+  }
+
   if (bookingFlow && bookingFlow.bookingRequested) {
     return `Follow up with ${lead.name} about scheduling a showing.`;
   }
@@ -25,11 +35,15 @@ function buildReminderMessage({ lead, bookingFlow }) {
   return `Follow up with ${lead.name} about their real estate inquiry.`;
 }
 
-function getReminderType({ bookingFlow }) {
+function getReminderType({ bookingFlow, aiIntelligence }) {
+  if (aiIntelligence && aiIntelligence.urgency === "high") {
+    return "urgent_lead_follow_up";
+  }
+
   return bookingFlow && bookingFlow.bookingRequested ? "showing_follow_up" : "lead_follow_up";
 }
 
-async function scheduleFollowUpReminder(prisma, { lead, conversation = null, bookingFlow = null } = {}) {
+async function scheduleFollowUpReminder(prisma, { lead, conversation = null, bookingFlow = null, aiIntelligence = null } = {}) {
   if (isDisabled(process.env.FOLLOW_UP_REMINDERS_ENABLED)) {
     return {
       reminderScheduled: false,
@@ -44,19 +58,21 @@ async function scheduleFollowUpReminder(prisma, { lead, conversation = null, boo
     };
   }
 
-  const scheduledFor = getScheduledFor();
+  const scheduledFor = getScheduledFor(aiIntelligence);
   const reminder = await prisma.followUpReminder.create({
     data: {
       agentId: lead.agentId || 1,
       leadId: lead.id,
       conversationId: conversation && conversation.id ? conversation.id : null,
       reminderType: getReminderType({
-        bookingFlow
+        bookingFlow,
+        aiIntelligence
       }),
       status: "scheduled",
       message: buildReminderMessage({
         lead,
-        bookingFlow
+        bookingFlow,
+        aiIntelligence
       }),
       scheduledFor
     }
@@ -66,7 +82,7 @@ async function scheduleFollowUpReminder(prisma, { lead, conversation = null, boo
     reminderScheduled: true,
     reminder,
     scheduledFor,
-    delayHours: getDelayHours()
+    delayHours: getDelayHours(aiIntelligence)
   };
 }
 

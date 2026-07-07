@@ -42,6 +42,11 @@ function getAiConfidence(aiExtraction) {
 function isQualifiedLead(lead) {
   const intent = lead.aiExtraction && lead.aiExtraction.intent;
   const confidence = getAiConfidence(lead.aiExtraction);
+  const leadScore = Number(lead.leadScore || (lead.aiIntelligence && lead.aiIntelligence.leadScore));
+
+  if (Number.isFinite(leadScore) && leadScore >= 75) {
+    return true;
+  }
 
   return QUALIFIED_INTENTS.has(intent) && confidence !== null && confidence >= 0.5;
 }

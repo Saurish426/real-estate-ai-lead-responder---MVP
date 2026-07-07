@@ -1,6 +1,6 @@
 # Real Estate AI Lead Responder MVP
 
-Node.js + Express MVP for capturing real estate leads, saving them to PostgreSQL with Prisma, sending email replies, extracting lead intent with OpenAI, generating AI response drafts, storing conversation memory, scheduling follow-up reminders, and viewing leads/settings in simple web pages.
+Node.js + Express MVP for capturing real estate leads, saving them to PostgreSQL with Prisma, sending email replies, extracting lead intent with OpenAI, scoring leads, detecting sentiment and urgency, generating AI response drafts, storing long-term conversation memory, scheduling follow-up reminders, and viewing leads/settings in simple web pages.
 
 ## Requirements
 
@@ -98,6 +98,23 @@ FOLLOW_UP_REMINDER_DELAY_HOURS=24
 
 Reminder scheduling failures never block lead creation, email sending, AI extraction, or AI response generation.
 
+## AI Intelligence
+
+The lead pipeline keeps the original AI extraction fields and adds a separate AI intelligence layer:
+
+- lead score from `0` to `100`
+- score label: `hot`, `warm`, `cold`, or `unqualified`
+- sentiment detection
+- urgency detection
+- follow-up recommendation
+- recommended next action
+- preferred response language
+- long-term conversation memory update
+
+OpenAI is used when `OPENAI_API_KEY` is configured. If AI intelligence fails, the app falls back to deterministic scoring so lead creation, email, dashboard, and booking flows continue working.
+
+Agent settings still control the custom response tone through `preferredReplyTone`. AI responses also receive language guidance from the intelligence layer, which creates the foundation for multilingual lead handling.
+
 ## App Routes
 
 - Lead form: `http://localhost:3000/`
@@ -178,11 +195,12 @@ Use this flow for a polished investor or accelerator demo:
 
 1. Submit sample lead from `http://localhost:3000/` or `http://localhost:3000/demo`.
 2. AI extracts intent, showing interest, timeline, budget, and confidence.
-3. AI generates a short professional real estate response.
-4. Customer auto-reply email sends, and the agent notification email sends.
-5. Dashboard updates at `http://localhost:3000/dashboard` with lead status, AI data, email status, and recent events.
-6. Booking workflow appears when the lead asks for a showing, including the saved calendar link when agent settings include one.
-7. Optional Google Calendar and follow-up reminder metadata appears when those integrations are configured.
+3. AI scores the lead, detects sentiment and urgency, and recommends the next follow-up.
+4. AI generates a short professional real estate response using the saved tone and response language.
+5. Customer auto-reply email sends, and the agent notification email sends.
+6. Dashboard updates at `http://localhost:3000/dashboard` with lead status, AI data, email status, and recent events.
+7. Booking workflow appears when the lead asks for a showing, including the saved calendar link when agent settings include one.
+8. Optional Google Calendar and follow-up reminder metadata appears when those integrations are configured.
 
 Before the demo, open `http://localhost:3000/settings` and save the agent name, business name, reply tone, and calendar link you want the AI to use.
 
@@ -228,5 +246,5 @@ For Render, create a Web Service or Blueprint from this GitHub repo, select Node
 - `.env` is ignored by Git and should stay local.
 - Unknown routes return JSON `404` responses.
 - Unexpected server errors are logged, but production responses stay generic.
-- AI extraction or AI response failures are logged without blocking lead saving or email sending.
+- AI extraction, intelligence, or AI response failures are logged without blocking lead saving or email sending.
 - Calendar and reminder failures are logged without blocking lead creation.

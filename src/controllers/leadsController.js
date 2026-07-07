@@ -1,6 +1,7 @@
 const { getPrismaClient } = require("../db");
 const { getAgentIdFromRequest, getAgentOrDefault } = require("../services/agentService");
 const { extractLeadDetails } = require("../services/aiExtractionService");
+const { analyzeLeadIntelligence } = require("../services/aiIntelligenceService");
 const { applyAiResponseGuardrails } = require("../services/aiResponseGuardrailService");
 const { generateLeadResponse } = require("../services/aiResponseService");
 const { applyBookingFlow } = require("../services/bookingFlowService");
@@ -164,14 +165,30 @@ function formatAiExtractionSummary(aiExtraction) {
   ].join(" | ");
 }
 
+function formatAiIntelligenceSummary(aiIntelligence) {
+  if (!aiIntelligence) {
+    return "Not available";
+  }
+
+  return [
+    `Score: ${aiIntelligence.leadScore ?? "unknown"}`,
+    `Label: ${aiIntelligence.leadScoreLabel || "unknown"}`,
+    `Sentiment: ${aiIntelligence.sentiment || "unknown"}`,
+    `Urgency: ${aiIntelligence.urgency || "unknown"}`,
+    `Language: ${aiIntelligence.preferredLanguage || "en"}`,
+    `Recommendation: ${aiIntelligence.followUpRecommendation || "none"}`
+  ].join(" | ");
+}
+
 function getAiConfidence(aiExtraction) {
   const confidence = Number(aiExtraction && aiExtraction.confidence);
   return Number.isFinite(confidence) ? confidence : null;
 }
 
-function getLeadStatus({ aiExtraction, emailSent, agentNotificationSent, conversation }) {
+function getLeadStatus({ aiExtraction, aiIntelligence, emailSent, agentNotificationSent, conversation }) {
   const intent = aiExtraction && aiExtraction.intent ? aiExtraction.intent : "unknown";
   const confidence = getAiConfidence(aiExtraction);
+  const leadScore = Number(aiIntelligence && aiIntelligence.leadScore);
 
   if (conversation && conversation.status === "booked") {
     return "booked";
@@ -182,6 +199,10 @@ function getLeadStatus({ aiExtraction, emailSent, agentNotificationSent, convers
   }
 
   if ((intent === "buyer" || intent === "seller" || intent === "showing_request") && confidence !== null && confidence >= 0.5) {
+    return "qualified";
+  }
+
+  if (Number.isFinite(leadScore) && leadScore >= 75) {
     return "qualified";
   }
 
@@ -252,11 +273,13 @@ async function listLeads(req, res) {
       leads: leads.map((lead) => {
         const conversation = conversationByLeadId.get(lead.id) || null;
         const aiResponse = conversation ? conversation.lastMessage : null;
+        const aiIntelligence = lead.aiIntelligence || null;
         const aiConfidence = getAiConfidence(lead.aiExtraction);
         const emailSent = lead.emailSent === true;
         const agentNotificationSent = lead.agentNotificationSent === true;
         const derivedStatus = getLeadStatus({
           aiExtraction: lead.aiExtraction,
+          aiIntelligence,
           emailSent,
           agentNotificationSent,
           conversation
@@ -278,10 +301,23 @@ async function listLeads(req, res) {
           archived: lead.archived === true,
           latestMessage: lead.message,
           aiExtraction: lead.aiExtraction,
+          aiIntelligence,
           aiExtractionSummary: formatAiExtractionSummary(lead.aiExtraction),
+          aiIntelligenceSummary: formatAiIntelligenceSummary(aiIntelligence),
           aiIntent: lead.aiExtraction ? lead.aiExtraction.intent || "unknown" : "unknown",
           wantsShowing: lead.aiExtraction ? lead.aiExtraction.wants_showing === true : false,
           aiConfidence,
+          aiLeadScore: lead.leadScore ?? (aiIntelligence ? aiIntelligence.leadScore : null),
+          aiLeadScoreLabel: lead.leadScoreLabel || (aiIntelligence ? aiIntelligence.leadScoreLabel : null),
+          aiSentiment: lead.sentiment || (aiIntelligence ? aiIntelligence.sentiment : null),
+          aiUrgency: lead.urgency || (aiIntelligence ? aiIntelligence.urgency : null),
+          preferredLanguage: lead.preferredLanguage || (aiIntelligence ? aiIntelligence.preferredLanguage : "en"),
+          followUpRecommendation: conversation
+            ? conversation.followUpRecommendation
+            : aiIntelligence
+              ? aiIntelligence.followUpRecommendation
+              : null,
+          longTermMemory: conversation ? conversation.longTermMemory : null,
           aiResponse,
           emailSent,
           agentNotificationSent,
@@ -629,6 +665,7 @@ async function createLead(req, res) {
 
     let aiResponse = null;
     let aiResponseGuardrail = null;
+    let aiIntelligence = null;
     let bookingFlow = null;
     let conversation = null;
     let agentSettings = null;
@@ -644,7 +681,68 @@ async function createLead(req, res) {
     }
 
     try {
-      aiResponse = await generateLeadResponse(savedLead, aiExtraction, existingConversation, agentSettings);
+      aiIntelligence = await analyzeLeadIntelligence({
+        lead: savedLead,
+        aiExtraction,
+        conversationMemory: existingConversation,
+        agentSettings
+      });
+
+      if (aiIntelligence) {
+        savedLead = await prisma.lead.update({
+          where: {
+            id: savedLead.id
+          },
+          data: {
+            aiIntelligence,
+            leadScore: aiIntelligence.leadScore,
+            leadScoreLabel: aiIntelligence.leadScoreLabel,
+            sentiment: aiIntelligence.sentiment,
+            urgency: aiIntelligence.urgency,
+            preferredLanguage: aiIntelligence.preferredLanguage || "en"
+          }
+        });
+
+        await logEvent(prisma, {
+          eventType: aiIntelligence.source === "openai" ? "ai_intelligence_success" : "ai_intelligence_fallback",
+          agentId: savedLead.agentId,
+          leadId: savedLead.id,
+          message:
+            aiIntelligence.source === "openai"
+              ? "AI intelligence completed."
+              : "AI intelligence used heuristic fallback.",
+          metadata: {
+            source: aiIntelligence.source,
+            leadScore: aiIntelligence.leadScore,
+            leadScoreLabel: aiIntelligence.leadScoreLabel,
+            sentiment: aiIntelligence.sentiment,
+            urgency: aiIntelligence.urgency,
+            preferredLanguage: aiIntelligence.preferredLanguage,
+            aiError: aiIntelligence.aiError
+          }
+        });
+      }
+    } catch (intelligenceError) {
+      console.error("Lead was saved, but AI intelligence failed:", {
+        leadId: savedLead.id,
+        message: intelligenceError.message,
+        code: intelligenceError.code
+      });
+
+      await logEvent(prisma, {
+        eventType: "ai_intelligence_failed",
+        agentId: savedLead.agentId,
+        leadId: savedLead.id,
+        message: "AI intelligence failed.",
+        metadata: {
+          errorMessage: intelligenceError.message,
+          errorCode: intelligenceError.code
+        }
+      });
+    }
+
+    try {
+      aiResponse = await generateLeadResponse(savedLead, aiExtraction, existingConversation, agentSettings, aiIntelligence);
 
       if (!aiResponse) {
         await logEvent(prisma, {
@@ -730,7 +828,8 @@ async function createLead(req, res) {
         aiExtraction,
         aiResponse,
         existingConversation,
-        bookingFlow
+        bookingFlow,
+        aiIntelligence
       });
 
       console.log(`Conversation memory saved for lead ${savedLead.id}.`);
@@ -833,7 +932,8 @@ async function createLead(req, res) {
       followUpReminderResult = await scheduleFollowUpReminder(prisma, {
         lead: savedLead,
         conversation,
-        bookingFlow
+        bookingFlow,
+        aiIntelligence
       });
 
       if (followUpReminderResult.reminderScheduled) {
@@ -909,7 +1009,7 @@ async function createLead(req, res) {
     let emailSent = false;
 
     try {
-      await sendLeadReplyEmail(savedLead);
+      await sendLeadReplyEmail(savedLead, aiResponse);
       emailSent = true;
       console.log(`Lead reply email sent for lead ${savedLead.id}.`);
 
@@ -947,6 +1047,7 @@ async function createLead(req, res) {
       await sendAgentLeadNotificationEmail({
         lead: savedLead,
         aiExtraction,
+        aiIntelligence,
         aiResponse,
         conversation,
         agentSettings,
@@ -1006,6 +1107,7 @@ async function createLead(req, res) {
       lead: savedLead,
       agent,
       aiExtraction,
+      aiIntelligence,
       aiResponse,
       aiResponseGuardrail,
       bookingFlow,

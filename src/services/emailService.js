@@ -171,13 +171,37 @@ function formatFollowUpReminder(followUpReminder) {
   ].join("\n");
 }
 
+function formatAiIntelligence(aiIntelligence) {
+  if (!aiIntelligence) {
+    return "Not available";
+  }
+
+  return [
+    `Lead score: ${cleanValue(aiIntelligence.leadScore)}`,
+    `Score label: ${cleanValue(aiIntelligence.leadScoreLabel)}`,
+    `Sentiment: ${cleanValue(aiIntelligence.sentiment)}`,
+    `Urgency: ${cleanValue(aiIntelligence.urgency)}`,
+    `Preferred language: ${cleanValue(aiIntelligence.preferredLanguage)}`,
+    `Recommendation: ${cleanValue(aiIntelligence.followUpRecommendation)}`,
+    `Next action: ${cleanValue(aiIntelligence.recommendedNextAction)}`
+  ].join("\n");
+}
+
 function getAgentNotificationRecipient(agentSettings) {
   const settingsEmail = agentSettings && typeof agentSettings.agentEmail === "string" ? agentSettings.agentEmail.trim() : "";
   const fallbackEmail = process.env.EMAIL_FROM || "";
   return settingsEmail || fallbackEmail;
 }
 
-function buildAgentNotificationBody({ lead, aiExtraction, aiResponse, conversation, calendarIntegration, followUpReminder }) {
+function buildAgentNotificationBody({
+  lead,
+  aiExtraction,
+  aiIntelligence,
+  aiResponse,
+  conversation,
+  calendarIntegration,
+  followUpReminder
+}) {
   return [
     "New real estate lead received.",
     "",
@@ -193,6 +217,9 @@ function buildAgentNotificationBody({ lead, aiExtraction, aiResponse, conversati
     "AI extraction summary:",
     formatAiExtractionSummary(aiExtraction),
     "",
+    "AI intelligence:",
+    formatAiIntelligence(aiIntelligence),
+    "",
     "AI generated response:",
     cleanValue(aiResponse),
     "",
@@ -206,15 +233,16 @@ function buildAgentNotificationBody({ lead, aiExtraction, aiResponse, conversati
   ].join("\n");
 }
 
-async function sendLeadReplyEmail(lead) {
+async function sendLeadReplyEmail(lead, aiResponse = null) {
   const mailer = getTransporter();
   const from = process.env.EMAIL_FROM || process.env.EMAIL_USER;
+  const text = cleanString(aiResponse) || `Hi ${lead.name}, thanks for reaching out! Are you looking to schedule a showing or get more information?`;
 
   const info = await mailer.sendMail({
     from,
     to: lead.email,
     subject: "Thanks for reaching out",
-    text: `Hi ${lead.name}, thanks for reaching out! Are you looking to schedule a showing or get more information?`
+    text
   });
 
   return info;
@@ -223,6 +251,7 @@ async function sendLeadReplyEmail(lead) {
 async function sendAgentLeadNotificationEmail({
   lead,
   aiExtraction,
+  aiIntelligence,
   aiResponse,
   conversation,
   agentSettings,
@@ -244,6 +273,7 @@ async function sendAgentLeadNotificationEmail({
     text: buildAgentNotificationBody({
       lead,
       aiExtraction,
+      aiIntelligence,
       aiResponse,
       conversation,
       calendarIntegration,
