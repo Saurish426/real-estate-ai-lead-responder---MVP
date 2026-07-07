@@ -9,6 +9,7 @@ Usage:
 Optional:
   DEPLOY_TEST_EMAIL=you@example.com
   DEPLOY_TEST_CALENDAR_LINK=https://calendly.com/demo-agent/showing
+  DEPLOY_TEST_ACCOUNT_EMAIL=deployment-check@example.com
 `);
 }
 
@@ -34,25 +35,58 @@ function buildTestEmail() {
   return `${localPart}+deploy-${timestamp}@${domain}`;
 }
 
+function buildTestAccountEmail() {
+  const accountEmail = process.env.DEPLOY_TEST_ACCOUNT_EMAIL;
+  const timestamp = Date.now();
+
+  if (!accountEmail || !accountEmail.includes("@")) {
+    return `deployment-account-${timestamp}@${DEFAULT_TEST_EMAIL_DOMAIN}`;
+  }
+
+  const [localPart, domain] = accountEmail.split("@");
+  return `${localPart}+deploy-${timestamp}@${domain}`;
+}
+
+function getSetCookie(response) {
+  const setCookie = response.headers.get("set-cookie");
+
+  if (!setCookie) {
+    return "";
+  }
+
+  return setCookie.split(";")[0];
+}
+
 async function requestJson(url, options = {}) {
+  const { cookie, ...fetchOptions } = options;
   const response = await fetch(url, {
-    ...options,
+    ...fetchOptions,
     headers: {
       "Content-Type": "application/json",
+      ...(cookie ? { Cookie: cookie } : {}),
       ...(options.headers || {})
     }
   });
-  const body = await response.json();
+  const body = await response.json().catch(() => ({}));
 
   return {
     body,
     ok: response.ok,
+    setCookie: getSetCookie(response),
     status: response.status
   };
 }
 
-async function requestText(url) {
-  const response = await fetch(url);
+async function requestText(url, options = {}) {
+  const { cookie, redirect, ...fetchOptions } = options;
+  const response = await fetch(url, {
+    ...fetchOptions,
+    headers: {
+      ...(cookie ? { Cookie: cookie } : {}),
+      ...(options.headers || {})
+    },
+    redirect: redirect || "follow"
+  });
   const body = await response.text();
 
   return {
@@ -74,16 +108,34 @@ async function main() {
 
   const baseUrl = getPublicAppUrl();
   const testEmail = buildTestEmail();
+  const testAccountEmail = buildTestAccountEmail();
+  const testAccountPassword = `DeployTest${Date.now()}!`;
   const calendarLink = process.env.DEPLOY_TEST_CALENDAR_LINK || "https://calendly.com/demo-agent/showing";
 
-  const [homepage, dashboard, health] = await Promise.all([
+  const [homepage, health, readiness] = await Promise.all([
     requestText(`${baseUrl}/`),
-    requestText(`${baseUrl}/dashboard`),
-    requestJson(`${baseUrl}/health`)
+    requestJson(`${baseUrl}/health`),
+    requestJson(`${baseUrl}/ready`)
   ]);
+  const protectedDashboard = await requestText(`${baseUrl}/dashboard`, {
+    redirect: "manual"
+  });
+  const signupResponse = await requestJson(`${baseUrl}/api/auth/signup`, {
+    method: "POST",
+    body: JSON.stringify({
+      name: "Deployment Check Agent",
+      email: testAccountEmail,
+      password: testAccountPassword
+    })
+  });
+  const sessionCookie = signupResponse.setCookie;
+  const authenticatedDashboard = await requestText(`${baseUrl}/dashboard`, {
+    cookie: sessionCookie
+  });
 
   const settingsResponse = await requestJson(`${baseUrl}/api/settings`, {
     method: "POST",
+    cookie: sessionCookie,
     body: JSON.stringify({
       agentName: "Deployment Demo Agent",
       agentEmail: "",
@@ -105,7 +157,9 @@ async function main() {
     })
   });
 
-  const dashboardData = await requestJson(`${baseUrl}/api/leads`);
+  const dashboardData = await requestJson(`${baseUrl}/api/leads`, {
+    cookie: sessionCookie
+  });
   const savedLeadId = leadResponse.body && leadResponse.body.lead && leadResponse.body.lead.id;
   const savedLead = (dashboardData.body.leads || []).find((lead) => lead.id === savedLeadId);
   const aiExtraction = leadResponse.body.aiExtraction || {};
@@ -113,15 +167,18 @@ async function main() {
 
   const checks = {
     healthCheckWorks: health.ok && health.body.status === "ok",
+    readinessCheckWorks: readiness.ok && readiness.body.status === "ready",
     homepageLoadsPublicly: homepage.ok && homepage.body.includes("AI Lead Responder"),
-    dashboardLoadsPublicly: dashboard.ok && dashboard.body.includes("Lead Dashboard"),
-    settingsWorksPublicly: settingsResponse.ok && settingsResponse.body.settings && settingsResponse.body.settings.calendarLink === calendarLink,
+    dashboardIsProtected: protectedDashboard.status === 302 || protectedDashboard.status === 301,
+    signupWorksPublicly: signupResponse.status === 201 && Boolean(sessionCookie),
+    dashboardLoadsAfterLogin: authenticatedDashboard.ok && authenticatedDashboard.body.includes("Lead Dashboard"),
+    settingsWorksAfterLogin: settingsResponse.ok && settingsResponse.body.settings && settingsResponse.body.settings.calendarLink === calendarLink,
     leadFormWorksPublicly: leadResponse.status === 201 && Boolean(savedLeadId),
     aiExtractionWorksPublicly: isPresent(aiExtraction.intent) && aiExtraction.wants_showing === true && isPresent(aiExtraction.confidence),
     aiResponseWorksPublicly: isPresent(leadResponse.body.aiResponse),
     customerEmailWorksPublicly: leadResponse.body.emailSent === true,
     bookingFlowWorksPublicly: bookingFlow.bookingRequested === true && bookingFlow.bookingLinkSent === true,
-    dashboardUpdatesPublicly: Boolean(savedLead),
+    dashboardUpdatesAfterLogin: Boolean(savedLead),
     dashboardShowsAiAndBooking: Boolean(savedLead && savedLead.wantsShowing === true && savedLead.bookingRequested === true)
   };
 

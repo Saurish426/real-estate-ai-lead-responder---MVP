@@ -53,13 +53,106 @@ const eventsRoutes = require("./routes/events");
 const agentsRoutes = require("./routes/agents");
 const metricsRoutes = require("./routes/metrics");
 const officeRoutes = require("./routes/office");
+const { getPrismaClient } = require("./db");
 const { loadAuth, redirectIfAuthenticated, requirePageAuth } = require("./middleware/authMiddleware");
+const { rateLimiter, requestLogger, securityHeaders } = require("./middleware/productionMiddleware");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const REQUIRED_PRODUCTION_ENV_VARS = [
+  "DATABASE_URL",
+  "OPENAI_API_KEY",
+  "EMAIL_USER",
+  "EMAIL_APP_PASSWORD",
+  "EMAIL_FROM"
+];
 
-// This lets Express read JSON request bodies like req.body.
-app.use(express.json());
+function getMissingProductionEnvVars() {
+  return REQUIRED_PRODUCTION_ENV_VARS.filter((key) => !process.env[key]);
+}
+
+function validateStartupConfiguration() {
+  const missing = getMissingProductionEnvVars();
+
+  if (process.env.NODE_ENV === "production" && missing.length > 0) {
+    throw new Error(`Missing required production environment variables: ${missing.join(", ")}`);
+  }
+
+  if (missing.length > 0) {
+    console.warn("Production environment variables are not fully configured yet:", {
+      missing
+    });
+  }
+}
+
+validateStartupConfiguration();
+
+// Render/Railway sit behind a proxy. Trust one proxy hop so req.ip and secure cookies behave correctly.
+app.set("trust proxy", 1);
+
+app.disable("x-powered-by");
+
+app.use(securityHeaders);
+app.use(requestLogger);
+app.use(rateLimiter);
+
+// This lets Express read JSON request bodies like req.body, with a small limit for safety.
+app.use(express.json({
+  limit: "100kb"
+}));
+
+// Deployment platforms can call this route to confirm the Node process is alive.
+app.get("/health", (req, res) => {
+  res.json({
+    status: "ok",
+    environment: process.env.NODE_ENV || "development",
+    uptimeSeconds: Math.round(process.uptime())
+  });
+});
+
+// Readiness checks configuration and database connectivity before production traffic is routed here.
+app.get("/ready", async (req, res) => {
+  const missing = getMissingProductionEnvVars();
+
+  if (process.env.NODE_ENV === "production" && missing.length > 0) {
+    return res.status(503).json({
+      status: "not_ready",
+      checks: {
+        environment: "failed",
+        database: "skipped"
+      },
+      missing
+    });
+  }
+
+  try {
+    const prisma = getPrismaClient();
+    await prisma.$queryRaw`SELECT 1`;
+
+    return res.json({
+      status: "ready",
+      checks: {
+        environment: missing.length > 0 ? "warning" : "ok",
+        database: "ok"
+      },
+      missing
+    });
+  } catch (error) {
+    console.error("Readiness check failed:", {
+      message: error.message,
+      code: error.code
+    });
+
+    return res.status(503).json({
+      status: "not_ready",
+      checks: {
+        environment: missing.length > 0 ? "warning" : "ok",
+        database: "failed"
+      }
+    });
+  }
+});
+
 app.use(loadAuth);
 
 // Each route file owns one small part of the API.
@@ -71,14 +164,6 @@ app.use("/api/events", eventsRoutes);
 app.use("/api/agents", agentsRoutes);
 app.use("/api/metrics", metricsRoutes);
 app.use("/api/office", officeRoutes);
-
-// Deployment platforms can call this route to confirm the app is alive.
-app.get("/health", (req, res) => {
-  res.json({
-    status: "ok",
-    environment: process.env.NODE_ENV || "development"
-  });
-});
 
 // Show the simple website lead form at the home page.
 app.get("/", (req, res) => {

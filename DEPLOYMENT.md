@@ -30,6 +30,7 @@ Set these in the deployment platform dashboard. Do not commit real values.
 
 ```bash
 DATABASE_URL=
+DIRECT_DATABASE_URL=
 OPENAI_API_KEY=
 EMAIL_USER=
 EMAIL_APP_PASSWORD=
@@ -44,6 +45,9 @@ GOOGLE_CALENDAR_DEFAULT_EVENT_DURATION_MINUTES=30
 GOOGLE_CALENDAR_DEFAULT_EVENT_START_HOURS=24
 FOLLOW_UP_REMINDERS_ENABLED=true
 FOLLOW_UP_REMINDER_DELAY_HOURS=24
+RATE_LIMIT_WINDOW_MS=60000
+RATE_LIMIT_MAX_REQUESTS=120
+LEAD_RATE_LIMIT_MAX_REQUESTS=30
 NODE_ENV=production
 ```
 
@@ -53,6 +57,7 @@ Notes:
 - Keep `GOOGLE_CALENDAR_ENABLED=false` until a valid Google Calendar OAuth access token is configured in the platform environment manager.
 - Set `EMAIL_PROVIDER=outlook` for Outlook SMTP or `EMAIL_PROVIDER=smtp` for a custom SMTP host.
 - Use the production PostgreSQL connection string for `DATABASE_URL`.
+- If `DATABASE_URL` uses a pooler, set `DIRECT_DATABASE_URL` to a direct PostgreSQL connection string for Prisma migration commands.
 - Keep all secrets in the platform environment variable manager, not in `.env`, README files, screenshots, logs, or commits.
 
 ## Deployment Scripts
@@ -88,6 +93,11 @@ Health Check Path: /health
 
 7. Deploy the service.
 8. Open the generated `https://your-service.onrender.com` URL.
+9. Confirm readiness:
+
+```bash
+curl https://your-service.onrender.com/ready
+```
 
 ### Option B: Manual Render Web Service
 
@@ -157,8 +167,12 @@ npm run verify:deployment
 The verification script checks:
 
 - homepage loads publicly
-- dashboard loads publicly
-- settings save publicly
+- health check loads publicly
+- readiness check passes publicly
+- dashboard redirects when logged out
+- signup creates a deployment test account
+- dashboard loads after login
+- settings save after login
 - lead form/API works publicly
 - AI extraction works publicly
 - AI response generation works publicly
@@ -168,6 +182,27 @@ The verification script checks:
 - dashboard updates publicly
 
 The script submits one deployment test lead. It does not print secrets.
+
+## Production Readiness
+
+Before real users, complete [`PRODUCTION_CHECKLIST.md`](PRODUCTION_CHECKLIST.md).
+
+The app includes:
+
+- security headers
+- request logging with `X-Request-Id`
+- basic rate limiting
+- production-safe error responses
+- `/health` liveness check
+- `/ready` configuration and database readiness check
+- EventLog tracking with sensitive metadata redaction
+
+Platform setup still needs:
+
+- managed database backups
+- uptime/error monitoring
+- log retention or log drain
+- alerting for deploys, 5xx errors, database pressure, and backup failures
 
 ## Demo Checklist
 

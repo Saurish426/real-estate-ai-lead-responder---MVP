@@ -58,15 +58,20 @@ Set these in `.env` locally and in your deployment platform:
 
 ```bash
 DATABASE_URL=
+DIRECT_DATABASE_URL=
 OPENAI_API_KEY=
 EMAIL_USER=
 EMAIL_APP_PASSWORD=
 EMAIL_FROM=
 EMAIL_PROVIDER=gmail
 GMAIL_LEAD_CAPTURE_ENABLED=false
+RATE_LIMIT_WINDOW_MS=60000
+RATE_LIMIT_MAX_REQUESTS=120
+LEAD_RATE_LIMIT_MAX_REQUESTS=30
 ```
 
 Keep `GMAIL_LEAD_CAPTURE_ENABLED=false` unless you intentionally enable future automatic Gmail polling. The current Gmail capture script is manual.
+If the deployed runtime uses a pooled database URL, set `DIRECT_DATABASE_URL` to the direct PostgreSQL URL for Prisma migration commands.
 
 ## Integrations
 
@@ -121,6 +126,7 @@ Agent settings still control the custom response tone through `preferredReplyTon
 - Dashboard: `http://localhost:3000/dashboard`
 - Agent settings: `http://localhost:3000/settings`
 - Health check: `http://localhost:3000/health`
+- Readiness check: `http://localhost:3000/ready`
 
 ## API Routes
 
@@ -136,6 +142,25 @@ Expected response:
 {
   "status": "ok",
   "environment": "development"
+}
+```
+
+Readiness check:
+
+```bash
+curl http://localhost:3000/ready
+```
+
+Expected response when configuration and database connectivity are ready:
+
+```json
+{
+  "status": "ready",
+  "checks": {
+    "environment": "ok",
+    "database": "ok"
+  },
+  "missing": []
 }
 ```
 
@@ -250,6 +275,7 @@ The script reads only the newest unread email with that exact subject, creates o
 ## Deployment
 
 Full deployment instructions are in [`DEPLOYMENT.md`](DEPLOYMENT.md).
+The production launch checklist is in [`PRODUCTION_CHECKLIST.md`](PRODUCTION_CHECKLIST.md).
 
 Recommended stack:
 
@@ -271,7 +297,12 @@ For Render, create a Web Service or Blueprint from this GitHub repo, select Node
 
 - The app uses environment variables for database, email, OpenAI, Gmail capture, Google Calendar, and reminder settings.
 - `.env` is ignored by Git and should stay local.
+- The app disables `X-Powered-By` and adds security headers including CSP, frame protection, content-type protection, referrer policy, permissions policy, and HSTS in production.
+- Basic rate limiting protects general traffic and lead submissions. Configure it with `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX_REQUESTS`, and `LEAD_RATE_LIMIT_MAX_REQUESTS`.
+- `/health` reports process liveness and `/ready` checks required production config plus database connectivity.
+- Request logs include request ID, method, path, status, and duration without logging request bodies or secrets.
 - Unknown routes return JSON `404` responses.
 - Unexpected server errors are logged, but production responses stay generic.
+- EventLog metadata is sanitized to avoid storing secret-looking values.
 - AI extraction, intelligence, or AI response failures are logged without blocking lead saving or email sending.
 - Calendar and reminder failures are logged without blocking lead creation.

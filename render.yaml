@@ -11,6 +11,12 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: RATE_LIMIT_WINDOW_MS
+        value: "60000"
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: "120"
+      - key: LEAD_RATE_LIMIT_MAX_REQUESTS
+        value: "30"
       - key: GMAIL_LEAD_CAPTURE_ENABLED
         value: "false"
       - key: EMAIL_PROVIDER
@@ -30,6 +36,8 @@ services:
       - key: FOLLOW_UP_REMINDER_DELAY_HOURS
         value: "24"
       - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_DATABASE_URL
         sync: false
       - key: OPENAI_API_KEY
         sync: false
