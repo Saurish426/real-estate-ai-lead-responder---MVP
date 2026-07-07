@@ -4,12 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Try the AI Lead Responder</title>
+  <meta name="description" content="Try sample real estate leads through the AI Lead Responder demo workflow.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     * {
       box-sizing: border-box;
+    }
+
+    :root {
+      color-scheme: light;
     }
 
     body {
@@ -20,6 +25,16 @@
         linear-gradient(135deg, #f8fafc 0%, #eef6ff 52%, #f2fbf7 100%);
       color: #172033;
       font-family: "Inter", Arial, sans-serif;
+      line-height: 1.5;
+      text-rendering: optimizeLegibility;
+    }
+
+    a:focus-visible,
+    button:focus-visible,
+    input:focus-visible,
+    textarea:focus-visible {
+      outline: 3px solid rgba(37, 99, 235, 0.45);
+      outline-offset: 3px;
     }
 
     .shell {
@@ -70,7 +85,7 @@
     h1 {
       margin: 0;
       color: #0f172a;
-      font-size: clamp(2.2rem, 5vw, 4.5rem);
+      font-size: 64px;
       line-height: 1.02;
       letter-spacing: 0;
     }
@@ -193,6 +208,20 @@
       box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.13);
     }
 
+    input.input-error,
+    textarea.input-error {
+      border-color: #ef4444;
+      background: #fff7f7;
+    }
+
+    .field-error {
+      min-height: 18px;
+      margin: 0;
+      color: #b42318;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
     textarea {
       min-height: 112px;
       resize: vertical;
@@ -210,6 +239,10 @@
       margin-top: 18px;
       padding: 14px 16px;
       transition: background 160ms ease, transform 160ms ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
     }
 
     .submit-button:hover {
@@ -221,6 +254,20 @@
       cursor: wait;
       opacity: 0.74;
       transform: none;
+    }
+
+    .button-spinner {
+      display: none;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.45);
+      border-top-color: #ffffff;
+      border-radius: 999px;
+      animation: spin 780ms linear infinite;
+    }
+
+    .submit-button.is-loading .button-spinner {
+      display: inline-block;
     }
 
     .result {
@@ -272,9 +319,19 @@
       font-weight: 800;
     }
 
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
     @media (max-width: 920px) {
       .hero {
         grid-template-columns: 1fr;
+      }
+
+      h1 {
+        font-size: 48px;
       }
     }
 
@@ -304,6 +361,25 @@
       .form-title {
         align-items: flex-start;
         flex-direction: column;
+      }
+
+      h1 {
+        font-size: 38px;
+      }
+
+      .submit-button {
+        white-space: normal;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
       }
     }
   </style>
@@ -346,38 +422,46 @@
           <span class="status-pill">Live API Demo</span>
         </div>
 
-        <form id="demoForm">
+        <form id="demoForm" novalidate>
           <div class="grid">
             <div class="field">
               <label for="name">Name</label>
-              <input id="name" name="name" type="text" required>
+              <input id="name" name="name" type="text" autocomplete="name" required aria-describedby="name-error">
+              <p id="name-error" class="field-error"></p>
             </div>
 
             <div class="field">
               <label for="email">Email</label>
-              <input id="email" name="email" type="email" required>
+              <input id="email" name="email" type="email" autocomplete="email" required aria-describedby="email-error">
+              <p id="email-error" class="field-error"></p>
             </div>
 
             <div class="field">
               <label for="phone">Phone</label>
-              <input id="phone" name="phone" type="tel" required>
+              <input id="phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" required aria-describedby="phone-error">
+              <p id="phone-error" class="field-error"></p>
             </div>
 
             <div class="field">
               <label for="source">Source</label>
-              <input id="source" name="source" type="text" value="demo" required>
+              <input id="source" name="source" type="text" value="demo" required aria-describedby="source-error">
+              <p id="source-error" class="field-error"></p>
             </div>
 
             <div class="field full">
               <label for="message">Message</label>
-              <textarea id="message" name="message" required></textarea>
+              <textarea id="message" name="message" minlength="10" required aria-describedby="message-error"></textarea>
+              <p id="message-error" class="field-error"></p>
             </div>
           </div>
 
-          <button id="submitButton" class="submit-button" type="submit">Submit Demo Lead</button>
+          <button id="submitButton" class="submit-button" type="submit">
+            <span class="button-label">Submit Demo Lead</span>
+            <span class="button-spinner" aria-hidden="true"></span>
+          </button>
         </form>
 
-        <section id="result" class="result" aria-live="polite"></section>
+        <section id="result" class="result" role="status" aria-live="polite" tabindex="-1"></section>
       </section>
     </section>
   </main>
@@ -410,11 +494,21 @@
     const form = document.getElementById("demoForm");
     const result = document.getElementById("result");
     const submitButton = document.getElementById("submitButton");
+    const submitButtonLabel = submitButton.querySelector(".button-label");
     const sampleButtons = document.querySelectorAll("[data-sample]");
+    const fieldMap = {
+      name: document.getElementById("name"),
+      email: document.getElementById("email"),
+      phone: document.getElementById("phone"),
+      source: document.getElementById("source"),
+      message: document.getElementById("message")
+    };
 
     function setLoading(isLoading) {
       submitButton.disabled = isLoading;
-      submitButton.textContent = isLoading ? "Submitting..." : "Submit Demo Lead";
+      submitButton.classList.toggle("is-loading", isLoading);
+      submitButton.setAttribute("aria-busy", String(isLoading));
+      submitButtonLabel.textContent = isLoading ? "Submitting..." : "Submit Demo Lead";
     }
 
     function escapeHtml(value) {
@@ -433,11 +527,11 @@
         return;
       }
 
-      form.name.value = sample.name;
-      form.email.value = sample.email.replace("@", `+${Date.now()}@`);
-      form.phone.value = sample.phone;
-      form.message.value = sample.message;
-      form.source.value = sample.source;
+      form.elements.name.value = sample.name;
+      form.elements.email.value = sample.email.replace("@", `+${Date.now()}@`);
+      form.elements.phone.value = sample.phone;
+      form.elements.message.value = sample.message;
+      form.elements.source.value = sample.source;
 
       sampleButtons.forEach((button) => {
         button.classList.toggle("active", button.dataset.sample === sampleKey);
@@ -445,6 +539,81 @@
 
       result.className = "result";
       result.innerHTML = "";
+      clearFieldErrors();
+    }
+
+    function setFieldError(fieldName, message) {
+      const input = fieldMap[fieldName];
+      const error = document.getElementById(`${fieldName}-error`);
+
+      if (!input || !error) {
+        return;
+      }
+
+      input.classList.toggle("input-error", Boolean(message));
+      input.setAttribute("aria-invalid", message ? "true" : "false");
+      error.textContent = message || "";
+    }
+
+    function clearFieldErrors() {
+      Object.keys(fieldMap).forEach((fieldName) => {
+        setFieldError(fieldName, "");
+      });
+    }
+
+    function validateLead(lead) {
+      clearFieldErrors();
+      const errors = {};
+
+      if (!lead.name) {
+        errors.name = "Name is required.";
+      }
+
+      if (!lead.email) {
+        errors.email = "Email is required.";
+      } else if (!fieldMap.email.validity.valid) {
+        errors.email = "Enter a valid email address.";
+      }
+
+      if (!lead.phone) {
+        errors.phone = "Phone is required.";
+      } else if (lead.phone.replace(/\D/g, "").length < 7) {
+        errors.phone = "Enter a valid phone number.";
+      }
+
+      if (!lead.source) {
+        errors.source = "Source is required.";
+      }
+
+      if (!lead.message) {
+        errors.message = "Message is required.";
+      } else if (lead.message.length < 10) {
+        errors.message = "Message should be at least 10 characters.";
+      }
+
+      Object.entries(errors).forEach(([fieldName, message]) => {
+        setFieldError(fieldName, message);
+      });
+
+      return errors;
+    }
+
+    async function getErrorMessage(response) {
+      try {
+        const data = await response.json();
+
+        if (Array.isArray(data.missingFields) && data.missingFields.length > 0) {
+          data.missingFields.forEach((fieldName) => {
+            setFieldError(fieldName, `${fieldName} is required.`);
+          });
+
+          return `Please complete: ${data.missingFields.join(", ")}.`;
+        }
+
+        return data.error || "Demo lead could not be submitted.";
+      } catch (error) {
+        return "Demo lead could not be submitted.";
+      }
     }
 
     function formatExtraction(aiExtraction) {
@@ -487,11 +656,13 @@
           </div>
         </div>
       `;
+      result.focus({ preventScroll: true });
     }
 
-    function showError() {
+    function showError(message) {
       result.className = "result visible error";
-      result.textContent = "Demo lead could not be submitted. Please check the server logs and try again.";
+      result.textContent = message || "Demo lead could not be submitted. Please check the server logs and try again.";
+      result.focus({ preventScroll: true });
     }
 
     sampleButtons.forEach((button) => {
@@ -507,12 +678,25 @@
       result.innerHTML = "";
 
       const lead = {
-        name: form.name.value.trim(),
-        email: form.email.value.trim(),
-        phone: form.phone.value.trim(),
-        message: form.message.value.trim(),
-        source: form.source.value.trim() || "demo"
+        name: form.elements.name.value.trim(),
+        email: form.elements.email.value.trim(),
+        phone: form.elements.phone.value.trim(),
+        message: form.elements.message.value.trim(),
+        source: form.elements.source.value.trim() || "demo"
       };
+      const errors = validateLead(lead);
+
+      if (Object.keys(errors).length > 0) {
+        showError("Please fix the highlighted fields and try again.");
+        const firstInvalidField = fieldMap[Object.keys(errors)[0]];
+
+        if (firstInvalidField) {
+          firstInvalidField.focus();
+        }
+
+        setLoading(false);
+        return;
+      }
 
       try {
         const response = await fetch("/api/leads", {
@@ -524,15 +708,21 @@
         });
 
         if (!response.ok) {
-          throw new Error("Request failed");
+          throw new Error(await getErrorMessage(response));
         }
 
         showResult(await response.json());
       } catch (error) {
-        showError();
+        showError(error.message);
       } finally {
         setLoading(false);
       }
+    });
+
+    Object.entries(fieldMap).forEach(([fieldName, input]) => {
+      input.addEventListener("input", () => {
+        setFieldError(fieldName, "");
+      });
     });
 
     fillForm("buyer");

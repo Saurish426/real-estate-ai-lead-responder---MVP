@@ -4,12 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI Lead Responder</title>
+  <meta name="description" content="AI Lead Responder captures, qualifies, and responds to real estate leads for agents.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     * {
       box-sizing: border-box;
+    }
+
+    :root {
+      color-scheme: light;
     }
 
     html {
@@ -22,10 +27,20 @@
       background: #f6f8fb;
       color: #172033;
       font-family: "Inter", Arial, sans-serif;
+      line-height: 1.5;
+      text-rendering: optimizeLegibility;
     }
 
     a {
       color: inherit;
+    }
+
+    a:focus-visible,
+    button:focus-visible,
+    input:focus-visible,
+    textarea:focus-visible {
+      outline: 3px solid rgba(37, 99, 235, 0.45);
+      outline-offset: 3px;
     }
 
     .hero {
@@ -78,6 +93,7 @@
     .hero-content {
       max-width: 720px;
       padding: 74px 0 96px;
+      animation: fade-up 420ms ease both;
     }
 
     .eyebrow {
@@ -129,6 +145,25 @@
       white-space: nowrap;
     }
 
+    button {
+      position: relative;
+      gap: 9px;
+    }
+
+    .button-spinner {
+      display: none;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.45);
+      border-top-color: #ffffff;
+      border-radius: 999px;
+      animation: spin 780ms linear infinite;
+    }
+
+    button.is-loading .button-spinner {
+      display: inline-block;
+    }
+
     .button-link.primary,
     button.primary {
       background: #2563eb;
@@ -174,6 +209,12 @@
       background: #ffffff;
       box-shadow: 0 18px 48px rgba(26, 35, 57, 0.11);
       padding: 20px;
+      transition: transform 160ms ease, box-shadow 160ms ease;
+    }
+
+    .metric-card:hover {
+      box-shadow: 0 22px 52px rgba(26, 35, 57, 0.14);
+      transform: translateY(-2px);
     }
 
     .metric-label {
@@ -370,6 +411,20 @@
       box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.14);
     }
 
+    input.input-error,
+    textarea.input-error {
+      border-color: #ef4444;
+      background: #fff7f7;
+    }
+
+    .field-error {
+      min-height: 18px;
+      margin: 6px 0 0;
+      color: #b42318;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
     textarea {
       min-height: 116px;
       resize: vertical;
@@ -416,6 +471,24 @@
       color: inherit;
       text-decoration: underline;
       text-underline-offset: 3px;
+    }
+
+    @keyframes fade-up {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
     }
 
     @media (max-width: 980px) {
@@ -480,6 +553,22 @@
       .button-link,
       .quick-links a {
         width: 100%;
+      }
+
+      .button-link,
+      button {
+        white-space: normal;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
       }
     }
   </style>
@@ -581,31 +670,38 @@
               <span class="form-badge">Connected</span>
             </div>
 
-            <form id="lead-form">
+            <form id="lead-form" novalidate>
               <div class="form-group">
                 <label for="name">Name</label>
-                <input id="name" name="name" type="text" placeholder="John Smith" required>
+                <input id="name" name="name" type="text" placeholder="John Smith" autocomplete="name" required aria-describedby="name-error">
+                <p id="name-error" class="field-error"></p>
               </div>
 
               <div class="form-group">
                 <label for="email">Email</label>
-                <input id="email" name="email" type="email" placeholder="john@example.com" required>
+                <input id="email" name="email" type="email" placeholder="john@example.com" autocomplete="email" required aria-describedby="email-error">
+                <p id="email-error" class="field-error"></p>
               </div>
 
               <div class="form-group">
                 <label for="phone">Phone</label>
-                <input id="phone" name="phone" type="tel" placeholder="1234567890" required>
+                <input id="phone" name="phone" type="tel" placeholder="1234567890" autocomplete="tel" inputmode="tel" required aria-describedby="phone-error">
+                <p id="phone-error" class="field-error"></p>
               </div>
 
               <div class="form-group">
                 <label for="message">Message</label>
-                <textarea id="message" name="message" placeholder="Hi, I would like to schedule a showing this weekend." required></textarea>
+                <textarea id="message" name="message" placeholder="Hi, I would like to schedule a showing this weekend." minlength="10" required aria-describedby="message-error"></textarea>
+                <p id="message-error" class="field-error"></p>
               </div>
 
-              <button id="submit-button" class="primary" type="submit">Send inquiry</button>
+              <button id="submit-button" class="primary" type="submit">
+                <span class="button-label">Send inquiry</span>
+                <span class="button-spinner" aria-hidden="true"></span>
+              </button>
             </form>
 
-            <p id="form-message" class="form-message" role="status" aria-live="polite"></p>
+            <p id="form-message" class="form-message" role="status" aria-live="polite" tabindex="-1"></p>
           </section>
         </div>
       </div>
@@ -620,15 +716,100 @@
     const qualifiedLeads = document.getElementById("qualifiedLeads");
     const bookedShowings = document.getElementById("bookedShowings");
     const metricsStatus = document.getElementById("metricsStatus");
+    const submitButtonLabel = submitButton.querySelector(".button-label");
+    const fieldMap = {
+      name: document.getElementById("name"),
+      email: document.getElementById("email"),
+      phone: document.getElementById("phone"),
+      message: document.getElementById("message")
+    };
 
-    function showMessage(type, message) {
-      formMessage.innerHTML = message;
+    function showMessage(type, message, options = {}) {
+      if (options.html) {
+        formMessage.innerHTML = message;
+      } else {
+        formMessage.textContent = message;
+      }
+
       formMessage.className = `form-message ${type}`;
+      formMessage.focus({ preventScroll: true });
     }
 
     function setLoading(isLoading) {
       submitButton.disabled = isLoading;
-      submitButton.textContent = isLoading ? "Sending..." : "Send inquiry";
+      submitButton.classList.toggle("is-loading", isLoading);
+      submitButton.setAttribute("aria-busy", String(isLoading));
+      submitButtonLabel.textContent = isLoading ? "Sending..." : "Send inquiry";
+    }
+
+    function setFieldError(fieldName, message) {
+      const input = fieldMap[fieldName];
+      const error = document.getElementById(`${fieldName}-error`);
+
+      if (!input || !error) {
+        return;
+      }
+
+      input.classList.toggle("input-error", Boolean(message));
+      input.setAttribute("aria-invalid", message ? "true" : "false");
+      error.textContent = message || "";
+    }
+
+    function clearFieldErrors() {
+      Object.keys(fieldMap).forEach((fieldName) => {
+        setFieldError(fieldName, "");
+      });
+    }
+
+    function validateLead(lead) {
+      clearFieldErrors();
+      const errors = {};
+
+      if (!lead.name) {
+        errors.name = "Name is required.";
+      }
+
+      if (!lead.email) {
+        errors.email = "Email is required.";
+      } else if (!fieldMap.email.validity.valid) {
+        errors.email = "Enter a valid email address.";
+      }
+
+      if (!lead.phone) {
+        errors.phone = "Phone is required.";
+      } else if (lead.phone.replace(/\D/g, "").length < 7) {
+        errors.phone = "Enter a valid phone number.";
+      }
+
+      if (!lead.message) {
+        errors.message = "Message is required.";
+      } else if (lead.message.length < 10) {
+        errors.message = "Message should be at least 10 characters.";
+      }
+
+      Object.entries(errors).forEach(([fieldName, message]) => {
+        setFieldError(fieldName, message);
+      });
+
+      return errors;
+    }
+
+    async function getErrorMessage(response) {
+      try {
+        const data = await response.json();
+
+        if (Array.isArray(data.missingFields) && data.missingFields.length > 0) {
+          data.missingFields.forEach((fieldName) => {
+            setFieldError(fieldName, `${fieldName} is required.`);
+          });
+
+          return `Please complete: ${data.missingFields.join(", ")}.`;
+        }
+
+        return data.error || "Request failed. Please try again.";
+      } catch (error) {
+        return "Request failed. Please try again.";
+      }
     }
 
     function isQualified(lead) {
@@ -668,15 +849,30 @@
       event.preventDefault();
       formMessage.className = "form-message";
       formMessage.textContent = "";
-      setLoading(true);
+      clearFieldErrors();
 
       const lead = {
-        name: form.name.value.trim(),
-        email: form.email.value.trim(),
-        phone: form.phone.value.trim(),
-        message: form.message.value.trim(),
+        name: form.elements.name.value.trim(),
+        email: form.elements.email.value.trim(),
+        phone: form.elements.phone.value.trim(),
+        message: form.elements.message.value.trim(),
         source: "website"
       };
+
+      const errors = validateLead(lead);
+
+      if (Object.keys(errors).length > 0) {
+        showMessage("error", "Please fix the highlighted fields and try again.");
+        const firstInvalidField = fieldMap[Object.keys(errors)[0]];
+
+        if (firstInvalidField) {
+          firstInvalidField.focus();
+        }
+
+        return;
+      }
+
+      setLoading(true);
 
       try {
         const response = await fetch("/api/leads", {
@@ -688,18 +884,26 @@
         });
 
         if (!response.ok) {
-          throw new Error("Request failed");
+          throw new Error(await getErrorMessage(response));
         }
 
         await response.json();
         form.reset();
-        showMessage("success", "Thanks! We will get back to you shortly. <a href=\"/dashboard\">View the dashboard update.</a>");
+        showMessage("success", "Thanks! We will get back to you shortly. <a href=\"/dashboard\">View the dashboard update.</a>", {
+          html: true
+        });
         loadMetrics();
       } catch (error) {
-        showMessage("error", "Something went wrong. Please try again.");
+        showMessage("error", error.message || "Something went wrong. Please try again.");
       } finally {
         setLoading(false);
       }
+    });
+
+    Object.entries(fieldMap).forEach(([fieldName, input]) => {
+      input.addEventListener("input", () => {
+        setFieldError(fieldName, "");
+      });
     });
 
     loadMetrics();

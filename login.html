@@ -4,12 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login | AI Lead Responder</title>
+  <meta name="description" content="Log in to the AI Lead Responder dashboard.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     * {
       box-sizing: border-box;
+    }
+
+    :root {
+      color-scheme: light;
     }
 
     body {
@@ -20,6 +25,15 @@
         linear-gradient(180deg, #f8fafc, #e0f2fe);
       color: #172033;
       font-family: "Inter", Arial, sans-serif;
+      line-height: 1.5;
+      text-rendering: optimizeLegibility;
+    }
+
+    a:focus-visible,
+    button:focus-visible,
+    input:focus-visible {
+      outline: 3px solid rgba(37, 99, 235, 0.45);
+      outline-offset: 3px;
     }
 
     .page {
@@ -101,6 +115,10 @@
       margin-top: 4px;
       padding: 14px 16px;
       transition: background 160ms ease, transform 160ms ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
     }
 
     button:hover {
@@ -112,6 +130,20 @@
       cursor: wait;
       opacity: 0.72;
       transform: none;
+    }
+
+    .button-spinner {
+      display: none;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.45);
+      border-top-color: #ffffff;
+      border-radius: 999px;
+      animation: spin 780ms linear infinite;
+    }
+
+    button.is-loading .button-spinner {
+      display: inline-block;
     }
 
     .message {
@@ -138,6 +170,23 @@
       font-weight: 800;
       text-decoration: none;
     }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -158,7 +207,10 @@
           <input id="password" name="password" type="password" autocomplete="current-password" required>
         </div>
 
-        <button id="submitButton" type="submit">Log in</button>
+        <button id="submitButton" type="submit">
+          <span class="button-label">Log in</span>
+          <span class="button-spinner" aria-hidden="true"></span>
+        </button>
       </form>
 
       <div id="message" class="message" role="status" aria-live="polite"></div>
@@ -169,6 +221,7 @@
   <script>
     const form = document.getElementById("loginForm");
     const submitButton = document.getElementById("submitButton");
+    const submitButtonLabel = submitButton.querySelector(".button-label");
     const message = document.getElementById("message");
     const nextUrl = new URLSearchParams(window.location.search).get("next") || "/dashboard";
 
@@ -177,10 +230,25 @@
       message.className = type ? `message ${type}` : "message";
     }
 
+    function setLoading(isLoading) {
+      submitButton.disabled = isLoading;
+      submitButton.classList.toggle("is-loading", isLoading);
+      submitButton.setAttribute("aria-busy", String(isLoading));
+      submitButtonLabel.textContent = isLoading ? "Logging in..." : "Log in";
+    }
+
+    async function getErrorMessage(response) {
+      try {
+        const data = await response.json();
+        return data.error || "Could not log in.";
+      } catch (error) {
+        return "Could not log in.";
+      }
+    }
+
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
-      submitButton.disabled = true;
-      submitButton.textContent = "Logging in...";
+      setLoading(true);
       setMessage("");
 
       try {
@@ -190,23 +258,20 @@
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            email: form.email.value.trim(),
-            password: form.password.value
+            email: form.elements.email.value.trim(),
+            password: form.elements.password.value
           })
         });
 
-        const data = await response.json();
-
         if (!response.ok) {
-          throw new Error(data.error || "Could not log in.");
+          throw new Error(await getErrorMessage(response));
         }
 
         window.location.href = nextUrl;
       } catch (error) {
         setMessage(error.message, "error");
       } finally {
-        submitButton.disabled = false;
-        submitButton.textContent = "Log in";
+        setLoading(false);
       }
     });
   </script>

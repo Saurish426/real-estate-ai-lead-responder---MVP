@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Lead Dashboard</title>
+  <meta name="description" content="Real estate lead dashboard with AI qualification, CRM status, booking workflow, and event tracking.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -12,12 +13,26 @@
       box-sizing: border-box;
     }
 
+    :root {
+      color-scheme: light;
+    }
+
     body {
       margin: 0;
       min-height: 100vh;
       background: #f5f7fb;
       color: #172033;
       font-family: "Inter", Arial, sans-serif;
+      line-height: 1.5;
+      text-rendering: optimizeLegibility;
+    }
+
+    a:focus-visible,
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible {
+      outline: 3px solid rgba(37, 99, 235, 0.45);
+      outline-offset: 3px;
     }
 
     .shell {
@@ -106,6 +121,10 @@
       font-weight: 800;
       text-decoration: none;
       white-space: nowrap;
+    }
+
+    .nav-link:hover {
+      color: #1d4ed8;
     }
 
     button {
@@ -307,6 +326,11 @@
       font-size: 14px;
     }
 
+    .status-line.success {
+      color: #027a48;
+      font-weight: 700;
+    }
+
     .status-line.error {
       color: #b42318;
       font-weight: 700;
@@ -318,6 +342,11 @@
       border-radius: 8px;
       background: #ffffff;
       box-shadow: 0 18px 45px rgba(26, 35, 57, 0.08);
+      transition: opacity 160ms ease;
+    }
+
+    .table-wrap.is-loading {
+      opacity: 0.68;
     }
 
     table {
@@ -496,6 +525,20 @@
       background: #fecaca;
     }
 
+    .skeleton-row td {
+      padding: 16px;
+    }
+
+    .skeleton {
+      display: block;
+      width: 100%;
+      height: 14px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #eef2f7, #f8fafc, #eef2f7);
+      background-size: 220% 100%;
+      animation: shimmer 1.2s ease-in-out infinite;
+    }
+
     .empty-state {
       display: none;
       border: 1px dashed #cbd5e1;
@@ -542,6 +585,16 @@
       white-space: normal;
     }
 
+    @keyframes shimmer {
+      from {
+        background-position: 220% 0;
+      }
+
+      to {
+        background-position: -220% 0;
+      }
+    }
+
     @media (max-width: 900px) {
       .stats,
       .crm-toolbar,
@@ -562,6 +615,12 @@
         flex-direction: column;
       }
 
+      .nav-link {
+        display: inline-flex;
+        min-height: 36px;
+        align-items: center;
+      }
+
       .agent-filter {
         align-items: stretch;
         flex-direction: column;
@@ -575,6 +634,27 @@
 
       button {
         width: 100%;
+      }
+
+      .table-wrap::before {
+        content: "Scroll sideways to view all lead details.";
+        display: block;
+        border-bottom: 1px solid #e7edf5;
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 700;
+        padding: 10px 12px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
       }
     }
   </style>
@@ -698,7 +778,7 @@
       <button id="clearFiltersButton" class="toolbar-button" type="button">Clear</button>
     </section>
 
-    <div class="status-line" id="status"></div>
+    <div class="status-line" id="status" role="status" aria-live="polite"></div>
 
     <section class="empty-state" id="emptyState">
       <p class="empty-title">No leads yet.</p>
@@ -800,6 +880,7 @@
     let currentAgents = [];
     let searchTimer = null;
     let currentOffice = null;
+    let loadController = null;
 
     function formatDate(value) {
       if (!value) {
@@ -823,6 +904,73 @@
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
+    }
+
+    function setStatus(message, type) {
+      statusEl.textContent = message;
+      statusEl.className = type ? `status-line ${type}` : "status-line";
+    }
+
+    function handleUnauthorized(response) {
+      if (response.status === 401) {
+        window.location.href = `/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+        return true;
+      }
+
+      return false;
+    }
+
+    async function getResponseError(response, fallbackMessage) {
+      if (handleUnauthorized(response)) {
+        return "Please log in to continue.";
+      }
+
+      try {
+        const data = await response.json();
+        return data.error || fallbackMessage;
+      } catch (error) {
+        return fallbackMessage;
+      }
+    }
+
+    function renderLoadingRows() {
+      if (currentLeads.length > 0) {
+        return;
+      }
+
+      tableWrap.style.display = "block";
+      emptyState.classList.remove("visible");
+      leadRows.innerHTML = Array.from({ length: 4 }, () => {
+        return `
+          <tr class="skeleton-row" aria-hidden="true">
+            <td><span class="skeleton"></span></td>
+            <td><span class="skeleton"></span></td>
+            <td><span class="skeleton"></span></td>
+            <td><span class="skeleton"></span></td>
+            <td><span class="skeleton"></span></td>
+            <td><span class="skeleton"></span></td>
+            <td><span class="skeleton"></span></td>
+            <td><span class="skeleton"></span></td>
+            <td><span class="skeleton"></span></td>
+            <td><span class="skeleton"></span></td>
+            <td><span class="skeleton"></span></td>
+            <td><span class="skeleton"></span></td>
+            <td><span class="skeleton"></span></td>
+            <td><span class="skeleton"></span></td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    function setDashboardLoading(isLoading) {
+      refreshButton.disabled = isLoading;
+      refreshButton.textContent = isLoading ? "Refreshing..." : "Refresh";
+      tableWrap.classList.toggle("is-loading", isLoading);
+      tableWrap.setAttribute("aria-busy", String(isLoading));
+
+      if (isLoading) {
+        renderLoadingRows();
+      }
     }
 
     function cleanStatus(value) {
@@ -986,7 +1134,7 @@
       const response = await fetch("/api/agents");
 
       if (!response.ok) {
-        throw new Error("Agent request failed");
+        throw new Error(await getResponseError(response, "Could not load agents."));
       }
 
       const data = await response.json();
@@ -1028,6 +1176,7 @@
       leads.forEach((lead) => {
         const leadStatus = cleanStatus(lead.crmStatus || lead.leadStatus || lead.status);
         const latestNote = lead.latestNote ? lead.latestNote.body : "";
+        const leadLabel = escapeHtml(lead.name || lead.email || `Lead ${lead.id}`);
         const row = document.createElement("tr");
         row.innerHTML = `
           <td>
@@ -1040,7 +1189,7 @@
           <td>
             <div class="stack">
               <span class="pill status-pill ${statusClass(leadStatus)}">${escapeHtml(labelStatus(leadStatus))}</span>
-              <select class="status-select" data-action="status" data-lead-id="${lead.id}">
+              <select class="status-select" data-action="status" data-lead-id="${lead.id}" aria-label="Change status for ${leadLabel}">
                 ${statusOptions(leadStatus)}
               </select>
             </div>
@@ -1084,11 +1233,11 @@
           </td>
           <td>
             <div class="row-actions">
-              <button class="small-button neutral" type="button" data-action="edit" data-lead-id="${lead.id}">Edit</button>
-              <button class="small-button neutral" type="button" data-action="note" data-lead-id="${lead.id}">Note</button>
-              <button class="small-button neutral" type="button" data-action="assign" data-lead-id="${lead.id}">Assign</button>
-              <button class="small-button warning" type="button" data-action="archive" data-lead-id="${lead.id}">${lead.archived ? "Unarchive" : "Archive"}</button>
-              <button class="small-button danger" type="button" data-action="delete" data-lead-id="${lead.id}">Delete</button>
+              <button class="small-button neutral" type="button" data-action="edit" data-lead-id="${lead.id}" aria-label="Edit ${leadLabel}">Edit</button>
+              <button class="small-button neutral" type="button" data-action="note" data-lead-id="${lead.id}" aria-label="Add note for ${leadLabel}">Note</button>
+              <button class="small-button neutral" type="button" data-action="assign" data-lead-id="${lead.id}" aria-label="Assign ${leadLabel}">Assign</button>
+              <button class="small-button warning" type="button" data-action="archive" data-lead-id="${lead.id}" aria-label="${lead.archived ? "Unarchive" : "Archive"} ${leadLabel}">${lead.archived ? "Unarchive" : "Archive"}</button>
+              <button class="small-button danger" type="button" data-action="delete" data-lead-id="${lead.id}" aria-label="Delete ${leadLabel}">Delete</button>
             </div>
           </td>
           <td>${formatDate(lead.createdAt)}</td>
@@ -1129,7 +1278,7 @@
       });
 
       if (!response.ok) {
-        throw new Error("Lead update failed");
+        throw new Error(await getResponseError(response, "Lead update failed."));
       }
 
       return response.json();
@@ -1172,8 +1321,7 @@
         phone,
         message
       });
-      statusEl.className = "status-line";
-      statusEl.textContent = "Lead updated.";
+      setStatus("Lead updated.", "success");
       await loadLeads();
     }
 
@@ -1195,11 +1343,10 @@
       });
 
       if (!response.ok) {
-        throw new Error("Note creation failed");
+        throw new Error(await getResponseError(response, "Note creation failed."));
       }
 
-      statusEl.className = "status-line";
-      statusEl.textContent = "Note added.";
+      setStatus("Note added.", "success");
       await loadLeads();
     }
 
@@ -1223,8 +1370,7 @@
       await sendLeadUpdate(leadId, {
         assignedAgentId: assignedAgentId.trim() || null
       });
-      statusEl.className = "status-line";
-      statusEl.textContent = "Lead assignment updated.";
+      setStatus("Lead assignment updated.", "success");
       await loadLeads();
     }
 
@@ -1238,8 +1384,7 @@
       await sendLeadUpdate(leadId, {
         archived: !lead.archived
       });
-      statusEl.className = "status-line";
-      statusEl.textContent = lead.archived ? "Lead unarchived." : "Lead archived.";
+      setStatus(lead.archived ? "Lead unarchived." : "Lead archived.", "success");
       await loadLeads();
     }
 
@@ -1256,11 +1401,10 @@
       });
 
       if (!response.ok) {
-        throw new Error("Lead deletion failed");
+        throw new Error(await getResponseError(response, "Lead deletion failed."));
       }
 
-      statusEl.className = "status-line";
-      statusEl.textContent = "Lead deleted.";
+      setStatus("Lead deleted.", "success");
       await loadLeads();
     }
 
@@ -1286,26 +1430,31 @@
           await deleteLead(leadId);
         }
       } catch (error) {
-        statusEl.className = "status-line error";
-        statusEl.textContent = "CRM action failed.";
+        setStatus(error.message || "CRM action failed.", "error");
       }
     }
 
     async function loadLeads() {
-      refreshButton.disabled = true;
-      refreshButton.textContent = "Refreshing...";
-      statusEl.className = "status-line";
-      statusEl.textContent = "Loading leads...";
+      if (loadController) {
+        loadController.abort();
+      }
+
+      loadController = new AbortController();
+      const signal = loadController.signal;
+
+      setDashboardLoading(true);
+      setStatus("Loading leads...");
 
       try {
         const [leadsResponse, eventsResponse, metricsResponse] = await Promise.all([
-          fetch(buildAgentUrl("/api/leads", getLeadFilters())),
-          fetch(buildAgentUrl("/api/events")),
-          fetch(buildAgentUrl("/api/metrics"))
+          fetch(buildAgentUrl("/api/leads", getLeadFilters()), { signal }),
+          fetch(buildAgentUrl("/api/events"), { signal }),
+          fetch(buildAgentUrl("/api/metrics"), { signal })
         ]);
 
         if (!leadsResponse.ok || !eventsResponse.ok) {
-          throw new Error("Request failed");
+          const failedResponse = !leadsResponse.ok ? leadsResponse : eventsResponse;
+          throw new Error(await getResponseError(failedResponse, "Could not load dashboard data."));
         }
 
         const leadsData = await leadsResponse.json();
@@ -1315,13 +1464,18 @@
         const events = eventsData.events || [];
         renderLeads(leads, metricsData.metrics || null);
         renderEvents(events);
-        statusEl.textContent = `Updated ${formatDate(new Date().toISOString())}`;
+        setStatus(`Updated ${formatDate(new Date().toISOString())}`, "success");
       } catch (error) {
-        statusEl.className = "status-line error";
-        statusEl.textContent = "Could not load leads.";
+        if (error.name === "AbortError") {
+          return;
+        }
+
+        setStatus(error.message || "Could not load leads.", "error");
       } finally {
-        refreshButton.disabled = false;
-        refreshButton.textContent = "Refresh";
+        if (loadController && loadController.signal === signal) {
+          setDashboardLoading(false);
+          loadController = null;
+        }
       }
     }
 
@@ -1346,12 +1500,10 @@
         await sendLeadUpdate(select.dataset.leadId, {
           crmStatus: select.value
         });
-        statusEl.className = "status-line";
-        statusEl.textContent = "Lead status updated.";
+        setStatus("Lead status updated.", "success");
         await loadLeads();
       } catch (error) {
-        statusEl.className = "status-line error";
-        statusEl.textContent = "Could not update status.";
+        setStatus(error.message || "Could not update status.", "error");
       }
     });
     [statusFilter, archiveFilter, sortSelect].forEach((control) => {
@@ -1393,9 +1545,8 @@
 
     loadAgents()
       .then(loadLeads)
-      .catch(() => {
-        statusEl.className = "status-line error";
-        statusEl.textContent = "Could not load agents.";
+      .catch((error) => {
+        setStatus(error.message || "Could not load agents.", "error");
       });
   </script>
 </body>
